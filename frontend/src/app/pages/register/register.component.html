@@ -1,0 +1,98 @@
+<div class="register-container">
+  <h2>Créer un compte Enterprise</h2>
+
+  <!-- Error Alert -->
+  @if (errorMessage()) {
+    <div class="alert alert-danger">
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <form (ngSubmit)="handleRegister()">
+    
+    <!-- Nom de l'entreprise -->
+    <div class="form-group">
+      <label for="companyName">Nom de l'entreprise</label>
+      <input 
+        id="companyName" 
+        type="text" 
+        [(ngModel)]="companyName" 
+        name="companyName" 
+        placeholder="ex: Flesk Group" 
+        required />
+    </div>
+
+    <!-- Nom & Prénom -->
+    <div class="form-group">
+      <label for="name">Nom complet</label>
+      <input 
+        id="name" 
+        type="text" 
+        [(ngModel)]="name" 
+        name="name" 
+        placeholder="ex: Jean Dupont" 
+        required />
+    </div>
+
+    <!-- Matricule -->
+    <div class="form-group">
+      <label for="matricule">Matricule</label>
+      <input 
+        id="matricule" 
+        type="text" 
+        [(ngModel)]="matricule" 
+        name="matricule" 
+        placeholder="ex: EMP-2026-001" 
+        required />
+    </div>
+
+    <!-- Email -->
+    <div class="form-group">
+      <label for="email">Adresse Email</label>
+      <input 
+        id="email" 
+        type="email" 
+        [(ngModel)]="email" 
+        name="email" 
+        placeholder="nom@entreprise.com" 
+        required />
+    </div>
+
+    <!-- Mot de passe -->
+    <div class="form-group">
+      <label for="password">Mot de passe</label>
+      <input 
+        id="password" 
+        type="password" 
+        [(ngModel)]="password" 
+        name="password" 
+        placeholder="••••••••" 
+        required />
+    </div>
+
+    <!-- Confirmation mot de passe -->
+    <div class="form-group">
+      <label for="passwordConfirmation">Confirmer le mot de passe</label>
+      <input 
+        id="passwordConfirmation" 
+        type="password" 
+        [(ngModel)]="passwordConfirmation" 
+        name="passwordConfirmation" 
+        placeholder="••••••••" 
+        required />
+    </div>
+
+    <!-- Submit Button -->
+    <button type="submit" [disabled]="isLoading()" class="btn-submit">
+      @if (isLoading()) {
+        <span>Inscription en cours...</span>
+      } @else {
+        <span>S'inscrire</span>
+      }
+    </button>
+  </form>
+
+  <p class="login-link">
+    Vous avez déjà un compte ? <a routerLink="/login">Se connecter</a>
+  </p>
+</div>
