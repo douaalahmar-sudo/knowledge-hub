@@ -8,13 +8,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Procedure extends Model
 {
-    use HasFactory, BelongsToTenant; // <-- Added trait here
+    use HasFactory, BelongsToTenant; 
 
-    protected $fillable = [
-        'reference',
-        'name',
-        'module',
-        'status',
-        'tenant_id'
+   protected $fillable = [
+    'title',
+    'content',
+    'version',
+    'status',
+    'process_owner_id',
+    'tenant_id',
+];
     ];
 }
