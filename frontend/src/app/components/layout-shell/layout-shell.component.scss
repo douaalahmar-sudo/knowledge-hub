@@ -2,11 +2,9 @@
    KNOWLEDGE HUB — Design Tokens
    Enterprise neutral system (zinc/slate) inspired by Shadcn / Zard / Linear
 ==================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
-
 :host {
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-display: 'Plus Jakarta Sans', var(--font-sans);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-display: var(--font-sans);
 
   /* Surfaces */
   --bg-app: #f8f9fb;

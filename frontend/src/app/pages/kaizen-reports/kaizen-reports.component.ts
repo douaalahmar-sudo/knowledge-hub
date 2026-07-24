@@ -29,9 +29,13 @@ export class KaizenReportsComponent implements OnInit {
     errorMessage = signal<string | null>(null);
 
     selectedProcedureId = signal('');
+    type = signal('erreur_metier');
     criticality = signal('medium');
     description = signal('');
     processOwnerId = signal('');
+    resolutionNotes = signal('');
+    updatedContent = signal('');
+    activeResolvingSignal = signal<any | null>(null);
 
     ngOnInit(): void {
         this.fetchData();
@@ -63,6 +67,7 @@ export class KaizenReportsComponent implements OnInit {
 
         const payload = {
             procedure_id: Number(this.selectedProcedureId()),
+            type: this.type(),
             criticality: this.criticality(),
             description: this.description(),
             process_owner_id: this.processOwnerId() ? Number(this.processOwnerId()) : null
@@ -73,6 +78,7 @@ export class KaizenReportsComponent implements OnInit {
                 this.kaizenService.reports.update(list => [createdReport, ...list]);
                 this.isSubmitting.set(false);
                 this.selectedProcedureId.set('');
+                this.type.set('erreur_metier');
                 this.criticality.set('medium');
                 this.description.set('');
                 this.processOwnerId.set('');
@@ -82,5 +88,77 @@ export class KaizenReportsComponent implements OnInit {
                 this.errorMessage.set(error.error?.message || 'La soumission Kaizen a échoué.');
             }
         });
+    }
+
+    markInReview(signalId: number): void {
+        const signal = this.reports().find(report => report.id === signalId);
+
+        if (!signal) {
+            return;
+        }
+
+        this.activeResolvingSignal.set(signal);
+    }
+
+    resolveSignal(): void {
+        const signalToResolve = this.activeResolvingSignal();
+
+        if (!signalToResolve || !this.resolutionNotes().trim() || !this.updatedContent().trim()) {
+            this.errorMessage.set('Veuillez compléter les notes de résolution et le contenu mis à jour.');
+            return;
+        }
+
+        this.isSubmitting.set(true);
+        this.errorMessage.set(null);
+
+        this.kaizenService.createReport({
+            procedure_id: signalToResolve.procedure_id ?? signalToResolve.procedure?.id,
+            criticality: signalToResolve.criticality ?? 'medium',
+            description: this.updatedContent().trim(),
+            process_owner_id: signalToResolve.process_owner_id ?? null
+        }).subscribe({
+            next: () => {
+                this.isSubmitting.set(false);
+                this.activeResolvingSignal.set(null);
+                this.resolutionNotes.set('');
+                this.updatedContent.set('');
+            },
+            error: (error) => {
+                this.isSubmitting.set(false);
+                this.errorMessage.set(error.error?.message || 'La résolution du signalement a échoué.');
+            }
+        });
+    }
+
+    getCriticalityBg(criticality: string): string {
+        switch (criticality) {
+            case 'critique':
+            case 'critical':
+                return '#fee2e2';
+            case 'moyenne':
+            case 'medium':
+                return '#fef3c7';
+            case 'faible':
+            case 'low':
+                return '#dcfce7';
+            default:
+                return '#e2e8f0';
+        }
+    }
+
+    getCriticalityColor(criticality: string): string {
+        switch (criticality) {
+            case 'critique':
+            case 'critical':
+                return '#b91c1c';
+            case 'moyenne':
+            case 'medium':
+                return '#92400e';
+            case 'faible':
+            case 'low':
+                return '#15803d';
+            default:
+                return '#334155';
+        }
     }
 }
