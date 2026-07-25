@@ -1,5 +1,8 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
+import { ArticleListComponent } from './features/articles/article-list/article-list.component';
+import { ArticleEditorComponent } from './features/articles/article-editor/article-editor.component';
+import { ArticleDetailComponent } from './features/articles/article-detail/article-detail.component';
 
 
 
@@ -7,7 +10,9 @@ import { authGuard } from './guards/auth.guard';
 export const routes: Routes = [
 // 1. Redirect root URL straight to login screen
 {
-    path: '', redirectTo: 'login', pathMatch: 'full'
+    path: '',
+    redirectTo: 'login',
+    pathMatch: 'full'
 },
 // 2. Public Auth Views (Lazy Loaded Standalone Components)
 {
@@ -18,7 +23,7 @@ export const routes: Routes = [
     path: 'register',
     loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent)
 },
-// 3. Protected Main Application Wrapper (Guarded by Sanctum Session State)
+// 3. Protected Main Application Wrapper
 {
     path: 'dashboard',
     canActivate: [authGuard],
@@ -31,11 +36,29 @@ export const routes: Routes = [
     {
         path: 'kaizen',
         loadComponent: () => import('./pages/kaizen-reports/kaizen-reports.component').then(m => m.KaizenReportsComponent)
+    },
+    // Knowledge Base Module Routes (Rendered inside Dashboard Layout)
+    {
+        path: 'knowledge-base',
+        component: ArticleListComponent
+    },
+    {
+        path: 'knowledge-base/new',
+        component: ArticleEditorComponent
+    },
+    {
+        path: 'knowledge-base/:slug',
+        component: ArticleDetailComponent
+    },
+    {
+        path: 'knowledge-base/edit/:slug',
+        component: ArticleEditorComponent
     }
     ]
 },
 // 4. Wildcard Catch-All (Redirect unknown paths back to login)
 {
-    path: '**', redirectTo: 'login'
+    path: '**',
+    redirectTo: 'login'
 }
 ];

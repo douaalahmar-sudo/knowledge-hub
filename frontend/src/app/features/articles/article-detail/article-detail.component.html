@@ -1,0 +1,56 @@
+<div class="p-6 max-w-4xl mx-auto space-y-6">
+  <!-- Back Button -->
+  <a routerLink="/knowledge-base" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600">
+    ← Retour aux articles
+  </a>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="text-center py-12">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent"></div>
+  </div>
+
+  <!-- Article Container -->
+  <article *ngIf="!isLoading && article" class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm p-8 space-y-6">
+    <!-- Cover Image -->
+    <div *ngIf="article.cover_image_url" class="rounded-lg overflow-hidden h-64 w-full">
+      <img [src]="article.cover_image_url" [alt]="article.title" class="w-full h-full object-cover" />
+    </div>
+
+    <!-- Header -->
+    <div class="border-b border-gray-100 pb-6">
+      <h1 class="text-3xl font-bold text-gray-900 mb-3">{{ article.title }}</h1>
+      <div class="flex items-center gap-4 text-xs text-gray-500">
+        <span>Publié par <strong class="text-gray-700">{{ article.author?.name || 'Équipe RH' }}</strong></span>
+        <span>•</span>
+        <span>{{ article.published_at | date:'dd/MM/yyyy' }}</span>
+        <span>•</span>
+        <span>⏱️ {{ article.reading_time_minutes || 1 }} min de lecture</span>
+      </div>
+    </div>
+
+    <!-- Summary Box -->
+    <div *ngIf="article.summary" class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg text-sm text-indigo-900">
+      {{ article.summary }}
+    </div>
+
+    <!-- Article Body -->
+    <div class="prose max-w-none text-gray-800 leading-relaxed text-base whitespace-pre-wrap">
+      {{ article.content }}
+    </div>
+
+    <!-- Attachments -->
+    <div *ngIf="article.attachments && article.attachments.length > 0" class="pt-6 border-t border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-900 mb-3">📎 Pièces jointes à télécharger</h3>
+      <div class="space-y-2">
+        <a 
+          *ngFor="let file of article.attachments" 
+          [href]="file.url" 
+          target="_blank"
+          class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 text-sm">
+          <span class="font-medium text-indigo-600">{{ file.name }}</span>
+          <span class="text-xs text-gray-400">Télécharger ↓</span>
+        </a>
+      </div>
+    </div>
+  </article>
+</div>
