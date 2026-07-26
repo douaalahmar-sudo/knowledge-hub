@@ -1,0 +1,89 @@
+:host {
+  display: block;
+}
+
+.editor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #374151;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    background: #eef0fe;
+    border-color: #dcdcfb;
+    color: #4338ca;
+  }
+
+  &:active {
+    background: #e0e2fb;
+  }
+}
+
+/* Placeholder shown when the contenteditable surface is empty */
+.editor-surface:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* Rich-text formatting inside the editable surface.
+   ::ng-deep is required because the nodes are inserted at runtime by execCommand. */
+.editor-surface {
+  ::ng-deep h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0.8rem 0 0.4rem;
+    color: #101216;
+  }
+
+  ::ng-deep h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0.7rem 0 0.3rem;
+    color: #101216;
+  }
+
+  ::ng-deep p {
+    margin: 0 0 0.6rem;
+  }
+
+  ::ng-deep ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin: 0 0 0.6rem;
+  }
+
+  ::ng-deep ol {
+    list-style: decimal;
+    padding-left: 1.5rem;
+    margin: 0 0 0.6rem;
+  }
+
+  ::ng-deep blockquote {
+    border-left: 3px solid #4f46e5;
+    padding-left: 0.9rem;
+    margin: 0.6rem 0;
+    color: #52565f;
+    font-style: italic;
+  }
+
+  ::ng-deep a {
+    color: #4f46e5;
+    text-decoration: underline;
+  }
+
+  ::ng-deep img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+  }
+}

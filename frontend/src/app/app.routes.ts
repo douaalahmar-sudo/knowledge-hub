@@ -1,64 +1,61 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './guards/auth.guard';
-import { ArticleListComponent } from './features/articles/article-list/article-list.component';
-import { ArticleEditorComponent } from './features/articles/article-editor/article-editor.component';
-import { ArticleDetailComponent } from './features/articles/article-detail/article-detail.component';
-
-
 
 
 export const routes: Routes = [
-// 1. Redirect root URL straight to login screen
-{
-    path: '',
-    redirectTo: 'login',
-    pathMatch: 'full'
-},
-// 2. Public Auth Views (Lazy Loaded Standalone Components)
-{
-    path: 'login',
-    loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
-},
-{
-    path: 'register',
-    loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent)
-},
-// 3. Protected Main Application Wrapper
-{
-    path: 'dashboard',
-    canActivate: [authGuard],
-    loadComponent: () => import('./layouts/dashboard-layout/dashboard-layout.component').then(m => m.DashboardLayoutComponent),
-    children: [
+    // 1. Redirect root URL straight to the dashboard shell
     {
         path: '',
-        loadComponent: () => import('./pages/procedures-list/procedures-list.component').then(m => m.ProceduresListComponent)
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
     },
+    // 2. Primary Application Shell (single sidebar + header wrapper).
+    //    All child views render inside LayoutShellComponent's <router-outlet>.
     {
-        path: 'kaizen',
-        loadComponent: () => import('./pages/kaizen-reports/kaizen-reports.component').then(m => m.KaizenReportsComponent)
+        path: 'dashboard',
+        loadComponent: () => import('./components/layout-shell/layout-shell.component').then(m => m.LayoutShellComponent),
+        children: [
+            // /dashboard -> Executive dashboard & procedures
+            {
+                path: '',
+                pathMatch: 'full',
+                loadComponent: () => import('./pages/procedures-list/procedures-list.component').then(m => m.ProceduresListComponent)
+            },
+            // /dashboard/procedures -> Procedures list (alias used by "related procedures" links)
+            {
+                path: 'procedures',
+                loadComponent: () => import('./pages/procedures-list/procedures-list.component').then(m => m.ProceduresListComponent)
+            },
+            // /dashboard/kaizen -> Kaizen reports & écarts
+            {
+                path: 'kaizen',
+                loadComponent: () => import('./pages/kaizen-reports/kaizen-reports.component').then(m => m.KaizenReportsComponent)
+            },
+            // ---- Knowledge Base module ----
+            // /dashboard/knowledge-base -> KB portal
+            {
+                path: 'knowledge-base',
+                loadComponent: () => import('./features/articles/article-list/article-list.component').then(m => m.ArticleListComponent)
+            },
+            // /dashboard/knowledge-base/new -> create article (must precede :slug)
+            {
+                path: 'knowledge-base/new',
+                loadComponent: () => import('./features/articles/article-editor/article-editor.component').then(m => m.ArticleEditorComponent)
+            },
+            // /dashboard/knowledge-base/edit/:slug -> edit article
+            {
+                path: 'knowledge-base/edit/:slug',
+                loadComponent: () => import('./features/articles/article-editor/article-editor.component').then(m => m.ArticleEditorComponent)
+            },
+            // /dashboard/knowledge-base/:slug -> article reader
+            {
+                path: 'knowledge-base/:slug',
+                loadComponent: () => import('./features/articles/article-detail/article-detail.component').then(m => m.ArticleDetailComponent)
+            }
+        ]
     },
-    // Knowledge Base Module Routes (Rendered inside Dashboard Layout)
+    // 3. Catch-all
     {
-        path: 'knowledge-base',
-        component: ArticleListComponent
-    },
-    {
-        path: 'knowledge-base/new',
-        component: ArticleEditorComponent
-    },
-    {
-        path: 'knowledge-base/:slug',
-        component: ArticleDetailComponent
-    },
-    {
-        path: 'knowledge-base/edit/:slug',
-        component: ArticleEditorComponent
+        path: '**',
+        redirectTo: 'dashboard'
     }
-    ]
-},
-// 4. Wildcard Catch-All (Redirect unknown paths back to login)
-{
-    path: '**',
-    redirectTo: 'login'
-}
 ];

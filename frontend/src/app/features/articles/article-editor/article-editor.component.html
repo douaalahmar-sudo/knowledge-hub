@@ -1,85 +1,185 @@
 <div class="p-6 max-w-5xl mx-auto">
   <!-- Header -->
-  <div class="flex items-center justify-between mb-6">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">
+      <a routerLink="/dashboard/knowledge-base" class="text-xs font-medium text-gray-500 hover:text-indigo-600">← Retour à la base de connaissances</a>
+      <h1 class="text-2xl font-bold text-gray-900 mt-1">
         {{ isEditMode ? 'Éditer l\'article' : 'Créer un nouvel article' }}
       </h1>
       <p class="text-sm text-gray-500">
         Publiez des directives, guides d'intégration ou annonces officielles pour l'entreprise.
       </p>
     </div>
-    <div class="flex gap-3">
-      <button 
-        type="button" 
-        (click)="onSubmit('draft')" 
+
+    <!-- Publish / Draft / Archive workflow -->
+    <div class="flex flex-wrap gap-2">
+      <button
+        type="button"
+        (click)="onSubmit('draft')"
         [disabled]="isSubmitting"
-        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-        Enregistrer comme brouillon
+        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+        {{ submittingStatus === 'draft' ? 'Enregistrement...' : 'Enregistrer le brouillon' }}
       </button>
-      <button 
-        type="button" 
-        (click)="onSubmit('published')" 
+
+      <button
+        *ngIf="isEditMode"
+        type="button"
+        (click)="onSubmit('archived')"
+        [disabled]="isSubmitting"
+        class="px-4 py-2 border border-amber-300 rounded-lg text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50">
+        {{ submittingStatus === 'archived' ? 'Archivage...' : 'Archiver' }}
+      </button>
+
+      <button
+        type="button"
+        (click)="onSubmit('published')"
         [disabled]="isSubmitting || articleForm.invalid"
         class="px-4 py-2 bg-indigo-600 rounded-lg text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
-        {{ isSubmitting ? 'Publication...' : 'Publier l\'article' }}
+        {{ submittingStatus === 'published' ? 'Publication...' : 'Publier l\'article' }}
       </button>
     </div>
   </div>
 
   <!-- Form Body -->
-  <form [formGroup]="articleForm" class="space-y-6 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-    <!-- Title & Category Row -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Titre de l'article *</label>
-        <input 
-          type="text" 
-          formControlName="title" 
-          placeholder="ex: Guide de bienvenue des nouveaux collaborateurs 2026"
-          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+  <form [formGroup]="articleForm" class="space-y-6">
+
+    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+      <!-- Title & Category Row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Titre de l'article *</label>
+          <input
+            type="text"
+            formControlName="title"
+            placeholder="ex: Guide de bienvenue des nouveaux collaborateurs 2026"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+          <p *ngIf="articleForm.get('title')?.touched && articleForm.get('title')?.invalid"
+             class="text-xs text-red-500 mt-1">
+            Un titre d'au moins 5 caractères est requis.
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Catégorie *</label>
+          <select
+            formControlName="category"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+            <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
+          </select>
+        </div>
       </div>
 
+      <!-- Tags -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Catégorie *</label>
-        <select 
-          formControlName="category" 
-          class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
-          <option *ngFor="let cat of categories" [value]="cat.value">
-            {{ cat.label }}
-          </option>
-        </select>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Mots-clés (tags)</label>
+        <input
+          type="text"
+          formControlName="tags"
+          placeholder="ex: onboarding, sécurité, caisse (séparés par des virgules)"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <p class="text-xs text-gray-400 mt-1">Utilisés pour relier l'article aux procédures pertinentes.</p>
+      </div>
+
+      <!-- Summary -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Résumé court</label>
+        <textarea
+          formControlName="summary"
+          rows="2"
+          placeholder="Aperçu rapide affiché dans les cartes de la base de connaissances..."
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
       </div>
     </div>
 
-    <!-- Cover Image URL -->
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">URL de l'image de couverture</label>
-      <input 
-        type="url" 
-        formControlName="cover_image_url" 
-        placeholder="https://images.unsplash.com/photo-..."
-        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+    <!-- Cover image (hero/thumbnail) upload -->
+    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+      <label class="block text-sm font-medium text-gray-700 mb-2">Image de couverture (héros / vignette)</label>
+
+      <div *ngIf="coverPreviewUrl" class="mb-3 relative rounded-lg overflow-hidden border border-gray-200 h-48">
+        <img [src]="coverPreviewUrl" alt="Aperçu de la couverture" class="w-full h-full object-cover" />
+        <button type="button" (click)="removeCover()" title="Retirer l'image"
+          class="absolute top-2 right-2 bg-white/90 text-gray-700 rounded-full w-7 h-7 flex items-center justify-center shadow hover:bg-white">
+          <app-icon name="x" [size]="15" />
+        </button>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
+        <label class="inline-flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 cursor-pointer w-fit">
+          <app-icon name="upload" [size]="16" />
+          <span>Téléverser une image</span>
+          <input type="file" accept="image/*" (change)="onCoverSelected($event)" class="hidden" />
+        </label>
+        <span class="text-xs text-gray-400">ou collez une URL :</span>
+        <input
+          type="url"
+          formControlName="cover_image_url"
+          placeholder="https://images.unsplash.com/photo-..."
+          class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+      </div>
     </div>
 
-    <!-- Summary -->
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Résumé court</label>
-      <textarea 
-        formControlName="summary" 
-        rows="2" 
-        placeholder="Aperçu rapide affiché dans les cartes de la base de connaissances..."
-        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+    <!-- WYSIWYG Rich Text Editor -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <label class="block text-sm font-medium text-gray-700 px-4 pt-4">Contenu de l'article *</label>
+
+      <!-- Toolbar -->
+      <div class="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-gray-200 bg-gray-50 mt-2">
+        <button type="button" (click)="format('bold')" title="Gras" class="editor-btn font-bold">B</button>
+        <button type="button" (click)="format('italic')" title="Italique" class="editor-btn italic">I</button>
+        <button type="button" (click)="format('underline')" title="Souligné" class="editor-btn underline">U</button>
+        <span class="w-px h-5 bg-gray-300 mx-1"></span>
+        <button type="button" (click)="format('formatBlock', 'H2')" title="Titre" class="editor-btn font-bold">H2</button>
+        <button type="button" (click)="format('formatBlock', 'H3')" title="Sous-titre" class="editor-btn font-semibold">H3</button>
+        <button type="button" (click)="format('formatBlock', 'BLOCKQUOTE')" title="Citation" class="editor-btn"><app-icon name="quote" [size]="16" /></button>
+        <span class="w-px h-5 bg-gray-300 mx-1"></span>
+        <button type="button" (click)="format('insertUnorderedList')" title="Liste à puces" class="editor-btn"><app-icon name="list" [size]="16" /></button>
+        <button type="button" (click)="format('insertOrderedList')" title="Liste numérotée" class="editor-btn"><app-icon name="list-ordered" [size]="16" /></button>
+        <span class="w-px h-5 bg-gray-300 mx-1"></span>
+        <button type="button" (click)="insertLink()" title="Lien" class="editor-btn"><app-icon name="link" [size]="16" /></button>
+        <button type="button" (click)="insertImage()" title="Image en ligne" class="editor-btn"><app-icon name="image" [size]="16" /></button>
+        <button type="button" (click)="format('removeFormat')" title="Effacer le format" class="editor-btn text-gray-400"><app-icon name="eraser" [size]="16" /></button>
+      </div>
+
+      <!-- Editable surface -->
+      <div
+        #editor
+        contenteditable="true"
+        (input)="onEditorInput()"
+        class="editor-surface min-h-[320px] px-5 py-4 focus:outline-none text-gray-800 leading-relaxed"
+        data-placeholder="Rédigez votre article ici… (formatage, titres, listes et médias en ligne supportés)">
+      </div>
     </div>
 
-    <!-- Content -->
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Contenu de l'article *</label>
-      <textarea 
-        formControlName="content" 
-        rows="12" 
-        placeholder="Rédigez votre article ici (supporte le HTML / Markdown)..."
-        class="w-full p-4 border rounded-lg font-mono text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+    <p *ngIf="articleForm.get('content')?.touched && articleForm.get('content')?.invalid"
+       class="text-xs text-red-500 -mt-3">
+      Le contenu de l'article est requis pour publier.
+    </p>
+
+    <!-- Attachments upload -->
+    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <label class="block text-sm font-medium text-gray-700">Pièces jointes (PDF, documents…)</label>
+        <label class="inline-flex items-center gap-2 px-3 py-1.5 border border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 cursor-pointer">
+          <span>+ Ajouter des fichiers</span>
+          <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" (change)="onAttachmentsSelected($event)" class="hidden" />
+        </label>
+      </div>
+
+      <div *ngIf="attachments.length === 0" class="text-sm text-gray-400 py-4 text-center border border-dashed border-gray-200 rounded-lg">
+        Aucune pièce jointe. Ajoutez des PDF ou documents à télécharger.
+      </div>
+
+      <ul *ngIf="attachments.length > 0" class="space-y-2">
+        <li *ngFor="let att of attachments; let i = index"
+            class="flex items-center justify-between p-3 border border-gray-200 rounded-lg text-sm bg-gray-50">
+          <span class="flex items-center gap-2 min-w-0 text-gray-500">
+            <app-icon name="paperclip" [size]="15" />
+            <span class="font-medium text-gray-700 truncate">{{ att.name }}</span>
+            <span class="text-xs text-gray-400 shrink-0">{{ formatBytes(att.size) }}</span>
+          </span>
+          <button type="button" (click)="removeAttachment(i)" class="text-red-500 hover:text-red-700 text-xs font-medium">Retirer</button>
+        </li>
+      </ul>
     </div>
   </form>
 </div>

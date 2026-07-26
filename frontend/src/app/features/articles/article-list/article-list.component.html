@@ -5,38 +5,45 @@
       <h1 class="text-2xl font-bold text-gray-900">Base de connaissances & Actualités</h1>
       <p class="text-sm text-gray-500">Guides, annonces officielles et politiques de l'entreprise</p>
     </div>
-    <a 
-      routerLink="/knowledge-base/new" 
+    <a
+      routerLink="/dashboard/knowledge-base/new"
       class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
       <span>+ Rédiger un article</span>
     </a>
   </div>
 
-  <!-- Search & Category Filters -->
-  <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-    <!-- Search Bar -->
-    <div class="relative w-full md:w-96">
-      <input 
-        type="text" 
-        [(ngModel)]="searchQuery" 
-        (keyup.enter)="onSearch()"
-        placeholder="Rechercher un article, directive..." 
-        class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-      <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
-    </div>
+  <!-- 4 Official Category Filter Cards (+ "All") -->
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+    <button
+      *ngFor="let cat of categoryCards"
+      (click)="onCategoryChange(cat.value)"
+      [class.ring-2]="selectedCategory === cat.value"
+      [class.ring-indigo-500]="selectedCategory === cat.value"
+      [class.border-indigo-200]="selectedCategory === cat.value"
+      [class.bg-indigo-50]="selectedCategory === cat.value"
+      class="text-left p-4 rounded-xl border border-gray-200 bg-white hover:border-indigo-300 hover:shadow-sm transition">
+      <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2">
+        <app-icon [name]="cat.icon" [size]="20" />
+      </div>
+      <div class="text-sm font-semibold text-gray-900 leading-tight">{{ cat.label }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">{{ cat.description }}</div>
+    </button>
+  </div>
 
-    <!-- Category Pills -->
-    <div class="flex flex-wrap gap-2 w-full md:w-auto">
-      <button 
-        *ngFor="let cat of categories" 
-        (click)="onCategoryChange(cat.value)"
-        [class.bg-indigo-600]="selectedCategory === cat.value"
-        [class.text-white]="selectedCategory === cat.value"
-        [class.bg-gray-100]="selectedCategory !== cat.value"
-        [class.text-gray-700]="selectedCategory !== cat.value"
-        class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:bg-indigo-500 hover:text-white">
-        {{ cat.label }}
-      </button>
+  <!-- Search Bar -->
+  <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+    <div class="relative">
+      <span class="absolute left-3 top-2.5 text-gray-400"><app-icon name="search" [size]="16" /></span>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (keyup.enter)="onSearch()"
+        placeholder="Rechercher un article, une directive, une annonce..."
+        class="w-full pl-10 pr-24 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <div class="absolute right-2 top-1.5 flex gap-1">
+        <button *ngIf="searchQuery" (click)="clearSearch()" class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700">Effacer</button>
+        <button (click)="onSearch()" class="px-3 py-1 text-xs font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Rechercher</button>
+      </div>
     </div>
   </div>
 
@@ -46,53 +53,86 @@
     <p class="mt-2 text-sm">Chargement des articles...</p>
   </div>
 
-  <!-- Articles Grid -->
-  <div *ngIf="!isLoading && articles.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    <div 
-      *ngFor="let article of articles" 
-      class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
-      
-      <!-- Cover Image (Optional) -->
-      <div *ngIf="article.cover_image_url" class="h-40 w-full overflow-hidden bg-gray-100">
-        <img [src]="article.cover_image_url" [alt]="article.title" class="w-full h-full object-cover" />
+  <ng-container *ngIf="!isLoading">
+    <!-- Featured / Pinned Announcements Hero -->
+    <section *ngIf="showFeatured" class="space-y-3">
+      <div class="flex items-center gap-2 text-indigo-600">
+        <app-icon name="star" [size]="20" />
+        <h2 class="text-lg font-bold text-gray-900">À la une & annonces récentes</h2>
       </div>
-
-      <div class="p-5 flex-1 flex flex-col justify-between">
-        <div>
-          <!-- Category & Reading Time -->
-          <div class="flex items-center justify-between text-xs mb-3">
-            <span [class]="'px-2.5 py-0.5 rounded-full font-medium ' + getCategoryBadge(article.category).class">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <a
+          *ngFor="let article of featuredArticles; let first = index"
+          [routerLink]="['/dashboard/knowledge-base', article.slug]"
+          [class.lg:col-span-3]="first === 0 && featuredArticles.length === 1"
+          class="group relative rounded-xl overflow-hidden border border-indigo-100 bg-gradient-to-br from-indigo-600 to-indigo-500 text-white p-6 min-h-[180px] flex flex-col justify-end shadow-sm hover:shadow-md transition">
+          <div
+            *ngIf="article.cover_image_url"
+            class="absolute inset-0 opacity-25 bg-center bg-cover"
+            [style.background-image]="'url(' + article.cover_image_url + ')'"></div>
+          <div class="relative">
+            <span class="inline-block text-[11px] font-semibold uppercase tracking-wide bg-white/20 rounded-full px-2 py-0.5 mb-2">
               {{ getCategoryBadge(article.category).label }}
             </span>
-            <span class="text-gray-400">⏱️ {{ article.reading_time_minutes || 1 }} min de lecture</span>
+            <h3 class="text-lg font-bold leading-snug line-clamp-2 group-hover:underline">{{ article.title }}</h3>
+            <p class="text-sm text-indigo-100 mt-1 line-clamp-2">{{ article.summary }}</p>
+            <div class="text-xs text-indigo-100 mt-3 flex items-center gap-3">
+              <span>Par {{ article.author?.name || 'Équipe RH' }}</span>
+              <span class="inline-flex items-center gap-1"><app-icon name="clock" [size]="13" /> {{ article.reading_time_minutes || 1 }} min</span>
+            </div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Articles Grid -->
+    <section *ngIf="feedArticles.length > 0" class="space-y-3">
+      <h2 *ngIf="showFeatured" class="text-lg font-bold text-gray-900">Tous les articles</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div
+          *ngFor="let article of feedArticles"
+          class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
+
+          <div *ngIf="article.cover_image_url" class="h-40 w-full overflow-hidden bg-gray-100">
+            <img [src]="article.cover_image_url" [alt]="article.title" class="w-full h-full object-cover" />
           </div>
 
-          <!-- Title -->
-          <h2 class="font-semibold text-gray-900 text-lg mb-2 line-clamp-2 hover:text-indigo-600">
-            <a [routerLink]="['/knowledge-base', article.slug]">{{ article.title }}</a>
-          </h2>
+          <div class="p-5 flex-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between text-xs mb-3">
+                <span [class]="'px-2.5 py-0.5 rounded-full font-medium ' + getCategoryBadge(article.category).class">
+                  {{ getCategoryBadge(article.category).label }}
+                </span>
+                <span class="text-gray-400 inline-flex items-center gap-1"><app-icon name="clock" [size]="13" /> {{ article.reading_time_minutes || 1 }} min de lecture</span>
+              </div>
 
-          <!-- Summary -->
-          <p class="text-sm text-gray-600 line-clamp-3 mb-4">
-            {{ article.summary || article.content }}
-          </p>
-        </div>
+              <h2 class="font-semibold text-gray-900 text-lg mb-2 line-clamp-2 hover:text-indigo-600">
+                <a [routerLink]="['/dashboard/knowledge-base', article.slug]">{{ article.title }}</a>
+              </h2>
 
-        <!-- Footer / Author Meta -->
-        <div class="pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-          <span>Par {{ article.author?.name || 'Équipe RH' }}</span>
-          <a [routerLink]="['/knowledge-base', article.slug]" class="text-indigo-600 font-medium hover:underline">
-            Lire l'article →
-          </a>
+              <p class="text-sm text-gray-600 line-clamp-3 mb-4">
+                {{ article.summary || article.content }}
+              </p>
+            </div>
+
+            <div class="pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+              <span>Par {{ article.author?.name || 'Équipe RH' }}</span>
+              <a [routerLink]="['/dashboard/knowledge-base', article.slug]" class="text-indigo-600 font-medium hover:underline">
+                Lire l'article →
+              </a>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- Empty State -->
-  <div *ngIf="!isLoading && articles.length === 0" class="bg-white rounded-xl p-12 text-center border border-gray-200">
-    <span class="text-4xl">📚</span>
-    <h3 class="text-lg font-semibold text-gray-800 mt-2">Aucun article trouvé</h3>
-    <p class="text-sm text-gray-500 mt-1">Ajustez votre recherche ou sélectionnez une autre catégorie.</p>
-  </div>
+    <!-- Empty State -->
+    <div *ngIf="articles.length === 0" class="bg-white rounded-xl p-12 text-center border border-gray-200">
+      <div class="w-14 h-14 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">
+        <app-icon name="book" [size]="26" />
+      </div>
+      <h3 class="text-lg font-semibold text-gray-800 mt-3">Aucun article trouvé</h3>
+      <p class="text-sm text-gray-500 mt-1">Ajustez votre recherche ou sélectionnez une autre catégorie.</p>
+    </div>
+  </ng-container>
 </div>
