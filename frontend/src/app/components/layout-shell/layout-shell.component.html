@@ -1,7 +1,10 @@
 <div class="shell-container">
 
+  <!-- Mobile/tablet backdrop, shown while the sidebar drawer is open -->
+  <div class="mobile-backdrop" [class.visible]="isMobileMenuOpen()" (click)="toggleMobileMenu()"></div>
+
   <!-- ==================== LEFT BLOCK (SIDEBAR) ==================== -->
-  <aside class="left-block">
+  <aside class="left-block" [class.open]="isMobileMenuOpen()">
     <div class="brand-header">
       <div class="brand-logo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>
@@ -68,6 +71,9 @@
   <!-- ==================== CENTER BLOCK (WORKSPACE) ==================== -->
   <main class="center-block">
     <header class="workspace-header">
+      <button type="button" class="menu-toggle-btn" (click)="toggleMobileMenu()" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+      </button>
       <div class="header-title">
         <h1>Espace de travail</h1>
         <p>Tenant actif&nbsp;: <strong>{{ currentTenant() }}</strong></p>
