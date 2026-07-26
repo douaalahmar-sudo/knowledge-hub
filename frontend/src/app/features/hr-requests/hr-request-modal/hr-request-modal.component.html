@@ -1,0 +1,167 @@
+<!-- Backdrop -->
+<div class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto" (click)="onClose()">
+  <div class="w-full max-w-2xl my-4 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col max-h-[92vh]" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <div>
+        <h3 class="text-lg font-bold text-gray-900">Nouvelle demande</h3>
+        <p class="text-sm text-gray-500">Choisissez un type de demande et complétez le formulaire.</p>
+      </div>
+      <button type="button" (click)="onClose()" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+        <app-icon name="x" [size]="18" />
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-5 overflow-y-auto space-y-6">
+
+      <!-- Type catalog -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Type de demande</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            *ngFor="let card of typeCards"
+            type="button"
+            (click)="selectType(card.value)"
+            [class.ring-2]="selectedType() === card.value"
+            [class.ring-indigo-500]="selectedType() === card.value"
+            [class.bg-indigo-50]="selectedType() === card.value"
+            [class.border-indigo-200]="selectedType() === card.value"
+            class="text-left p-4 rounded-xl border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition flex items-start gap-3">
+            <span class="w-9 h-9 shrink-0 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <app-icon [name]="card.icon" [size]="18" />
+            </span>
+            <span>
+              <span class="block text-sm font-semibold text-gray-900">{{ card.label }}</span>
+              <span class="block text-xs text-gray-400 mt-0.5">{{ card.description }}</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dynamic fields -->
+      <form [formGroup]="form" *ngIf="selectedType() as type" class="space-y-4 pt-1">
+
+        <!-- PAYSLIP -->
+        <div *ngIf="type === 'PAYSLIP'" class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mois</label>
+            <select formControlName="payslipMonth" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+              <option *ngFor="let m of months" [value]="m">{{ m }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Année</label>
+            <select formControlName="payslipYear" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+              <option *ngFor="let y of years" [value]="y">{{ y }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- WORK_CERTIFICATE -->
+        <div *ngIf="type === 'WORK_CERTIFICATE'">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Objet de l'attestation *</label>
+          <input type="text" formControlName="purpose"
+            placeholder="ex: Demande de visa, ouverture de compte bancaire..."
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        </div>
+
+        <!-- LEAVE_REQUEST -->
+        <div *ngIf="type === 'LEAVE_REQUEST'" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Type de congé</label>
+            <select formControlName="leaveType" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+              <option *ngFor="let lt of leaveTypes" [value]="lt">{{ lt }}</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Date de début *</label>
+              <input type="date" formControlName="start_date"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Date de fin *</label>
+              <input type="date" formControlName="end_date"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Motif (optionnel)</label>
+            <textarea formControlName="description" rows="2"
+              placeholder="Précisez le motif de votre absence..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+          </div>
+        </div>
+
+        <!-- CUSTOM -->
+        <div *ngIf="type === 'CUSTOM'" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Objet *</label>
+            <input type="text" formControlName="subject"
+              placeholder="ex: Demande de changement d'horaires"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea formControlName="description" rows="3"
+              placeholder="Décrivez votre demande en détail..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+          </div>
+        </div>
+
+        <!-- File dropzone -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Pièces justificatives</label>
+          <div
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+            [class.border-indigo-400]="isDragging()"
+            [class.bg-indigo-50]="isDragging()"
+            class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center transition">
+            <div class="flex justify-center text-gray-400 mb-2"><app-icon name="upload" [size]="24" /></div>
+            <p class="text-sm text-gray-600">Glissez-déposez vos fichiers ici, ou</p>
+            <label class="inline-block mt-2 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg cursor-pointer hover:bg-indigo-100">
+              Parcourir les fichiers
+              <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" (change)="onFilesSelected($event)" class="hidden" />
+            </label>
+            <p class="text-xs text-gray-400 mt-2">PDF, images ou documents (max. quelques Mo)</p>
+          </div>
+
+          <ul *ngIf="attachments().length > 0" class="mt-3 space-y-2">
+            <li *ngFor="let file of attachments(); let i = index"
+              class="flex items-center justify-between p-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50">
+              <span class="flex items-center gap-2 min-w-0 text-gray-500">
+                <app-icon name="file" [size]="15" />
+                <span class="font-medium text-gray-700 truncate">{{ file.name }}</span>
+                <span class="text-xs text-gray-400 shrink-0">{{ formatBytes(file.size) }}</span>
+              </span>
+              <button type="button" (click)="removeFile(i)" class="text-red-500 hover:text-red-700 text-xs font-medium">Retirer</button>
+            </li>
+          </ul>
+        </div>
+      </form>
+
+      <!-- Prompt when no type chosen -->
+      <div *ngIf="!selectedType()" class="text-center text-sm text-gray-400 py-6 border border-dashed border-gray-200 rounded-xl">
+        Sélectionnez un type de demande ci-dessus pour continuer.
+      </div>
+
+      <!-- Error -->
+      <p *ngIf="errorMessage()" class="text-sm text-red-500">{{ errorMessage() }}</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+      <button type="button" (click)="onClose()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+        Annuler
+      </button>
+      <button type="button" (click)="submit()" [disabled]="!selectedType() || isSubmitting()"
+        class="px-4 py-2 bg-indigo-600 rounded-lg text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
+        {{ isSubmitting() ? 'Envoi...' : 'Soumettre la demande' }}
+      </button>
+    </div>
+  </div>
+</div>

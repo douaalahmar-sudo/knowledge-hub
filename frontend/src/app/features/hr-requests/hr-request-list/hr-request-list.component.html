@@ -1,0 +1,113 @@
+<div class="p-6 max-w-6xl mx-auto space-y-6">
+  <!-- Header & CTA -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Mes demandes RH</h1>
+      <p class="text-sm text-gray-500">Suivez vos demandes de documents, congés et services administratifs.</p>
+    </div>
+    <button
+      (click)="openModal()"
+      class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+      <app-icon name="plus" [size]="16" />
+      <span>Nouvelle demande</span>
+    </button>
+  </div>
+
+  <!-- Count badge tabs -->
+  <div class="grid grid-cols-3 gap-3">
+    <div class="p-4 rounded-xl border border-gray-200 bg-white">
+      <div class="flex items-center gap-2 text-amber-600">
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+        <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">En attente</span>
+      </div>
+      <div class="text-2xl font-bold text-gray-900 mt-1">{{ pendingCount() }}</div>
+    </div>
+    <div class="p-4 rounded-xl border border-gray-200 bg-white">
+      <div class="flex items-center gap-2 text-blue-600">
+        <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+        <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">En cours</span>
+      </div>
+      <div class="text-2xl font-bold text-gray-900 mt-1">{{ activeCount() }}</div>
+    </div>
+    <div class="p-4 rounded-xl border border-gray-200 bg-white">
+      <div class="flex items-center gap-2 text-green-600">
+        <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+        <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">Prêtes</span>
+      </div>
+      <div class="text-2xl font-bold text-gray-900 mt-1">{{ readyCount() }}</div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading()" class="text-center py-12 text-gray-500">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent"></div>
+    <p class="mt-2 text-sm">Chargement de vos demandes...</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading()">
+    <!-- Request cards -->
+    <div *ngIf="requests().length > 0" class="space-y-3">
+      <div *ngFor="let req of requests()"
+        class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+
+        <!-- Type icon -->
+        <div class="w-11 h-11 shrink-0 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+          <app-icon [name]="typeMeta[req.type].icon" [size]="20" />
+        </div>
+
+        <!-- Main -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h3 class="text-sm font-semibold text-gray-900 truncate">{{ req.title }}</h3>
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+              [class]="statusMeta[req.status].badgeClass">
+              <span class="w-1.5 h-1.5 rounded-full" [class]="statusMeta[req.status].dotClass"></span>
+              {{ statusMeta[req.status].label }}
+            </span>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">
+            {{ typeMeta[req.type].label }}
+            <span *ngIf="req.created_at"> · Soumise le {{ req.created_at | date:'dd/MM/yyyy' }}</span>
+          </p>
+
+          <!-- Rejection note -->
+          <div *ngIf="req.status === 'REJECTED' && req.admin_note"
+            class="mt-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+            <strong>Motif du refus :</strong> {{ req.admin_note }}
+          </div>
+          <!-- Admin note on other statuses -->
+          <div *ngIf="req.status !== 'REJECTED' && req.admin_note"
+            class="mt-2 text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+            {{ req.admin_note }}
+          </div>
+        </div>
+
+        <!-- Action -->
+        <div class="shrink-0">
+          <a *ngIf="isDownloadable(req)" [href]="req.pdf_url" target="_blank" rel="noopener"
+            class="inline-flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+            <app-icon name="download" [size]="15" />
+            Télécharger le PDF
+          </a>
+          <span *ngIf="!isDownloadable(req) && req.status === 'PENDING'" class="text-xs text-gray-400">En file d'attente</span>
+          <span *ngIf="!isDownloadable(req) && req.status === 'IN_PROGRESS'" class="text-xs text-blue-500">Traitement en cours</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div *ngIf="requests().length === 0" class="bg-white rounded-xl p-12 text-center border border-gray-200">
+      <div class="w-14 h-14 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">
+        <app-icon name="inbox" [size]="26" />
+      </div>
+      <h3 class="text-lg font-semibold text-gray-800 mt-3">Aucune demande pour le moment</h3>
+      <p class="text-sm text-gray-500 mt-1">Créez votre première demande RH avec le bouton « Nouvelle demande ».</p>
+    </div>
+  </ng-container>
+</div>
+
+<!-- Submission modal -->
+<app-hr-request-modal
+  *ngIf="isModalOpen()"
+  (close)="onModalClosed()"
+  (created)="onRequestCreated()" />

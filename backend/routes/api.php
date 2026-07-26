@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProcedureController;
 use App\Http\Controllers\ProcedureVersionController;
 use App\Http\Controllers\KaizenController;
+use App\Http\Controllers\HrRequestController;
+use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\Api\EtapeWorkflowController;
 use App\Http\Middleware\ResolveTenantContext;
 
@@ -24,6 +26,25 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware(['auth:sanctum', ResolveTenantContext::class])->group(function () {
     
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // --- KNOWLEDGE BASE / HR ARTICLES (Module 1) ---
+    Route::prefix('v1')->group(function () {
+        Route::get('/articles', [ArticleController::class, 'index']);
+        Route::post('/articles', [ArticleController::class, 'store']);
+        Route::get('/articles/{article}', [ArticleController::class, 'show']);
+        Route::put('/articles/{article}', [ArticleController::class, 'update']);
+    });
+
+    // --- HR SELF-SERVICE / EMPLOYEE SERVICES (Module 2) ---
+    Route::prefix('v1')->group(function () {
+        // Employee endpoints
+        Route::get('/hr-requests/mine', [HrRequestController::class, 'userRequests']);
+        Route::post('/hr-requests', [HrRequestController::class, 'store']);
+
+        // HR Admin endpoints
+        Route::get('/hr-requests', [HrRequestController::class, 'index']);
+        Route::put('/hr-requests/{id}', [HrRequestController::class, 'updateStatus']);
+    });
 
     // --- PROCEDURES ENGINE (Protected by RBAC) ---
     Route::get('/procedures', [ProcedureController::class, 'index']);

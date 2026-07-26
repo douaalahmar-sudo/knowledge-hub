@@ -30,6 +30,17 @@ export const routes: Routes = [
                 path: 'kaizen',
                 loadComponent: () => import('./pages/kaizen-reports/kaizen-reports.component').then(m => m.KaizenReportsComponent)
             },
+            // ---- HR Self-Service module (Module 2) ----
+            // /dashboard/hr-requests -> Employee "Mes Demandes"
+            {
+                path: 'hr-requests',
+                loadComponent: () => import('./features/hr-requests/hr-request-list/hr-request-list.component').then(m => m.HrRequestListComponent)
+            },
+            // /dashboard/hr-admin -> HR Admin processing portal
+            {
+                path: 'hr-admin',
+                loadComponent: () => import('./features/hr-requests/hr-admin-portal/hr-admin-portal.component').then(m => m.HrAdminPortalComponent)
+            },
             // ---- Knowledge Base module ----
             // /dashboard/knowledge-base -> KB portal
             {

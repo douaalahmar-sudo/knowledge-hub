@@ -1,0 +1,178 @@
+<div class="p-6 max-w-7xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Espace RH — Traitement des demandes</h1>
+      <p class="text-sm text-gray-500">File d'attente des demandes employés, triée par priorité.</p>
+    </div>
+    <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 text-amber-800 text-sm font-medium">
+      <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+      {{ pendingCount() }} en attente de traitement
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading()" class="text-center py-12 text-gray-500">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent"></div>
+    <p class="mt-2 text-sm">Chargement de la file d'attente...</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading()">
+    <!-- Queue table -->
+    <div *ngIf="sortedRequests().length > 0" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left" style="min-width: 760px;">
+          <thead>
+            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+              <th class="px-5 py-3 font-semibold">Employé</th>
+              <th class="px-5 py-3 font-semibold">Demande</th>
+              <th class="px-5 py-3 font-semibold">Type</th>
+              <th class="px-5 py-3 font-semibold">Date</th>
+              <th class="px-5 py-3 font-semibold">Statut</th>
+              <th class="px-5 py-3 font-semibold text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let req of sortedRequests()" class="border-t border-gray-100 hover:bg-gray-50">
+              <td class="px-5 py-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center"><app-icon name="user" [size]="15" /></span>
+                  <span class="font-medium text-gray-800">{{ req.user_name || 'Employé' }}</span>
+                </div>
+              </td>
+              <td class="px-5 py-3 text-gray-700 max-w-[220px] truncate">{{ req.title }}</td>
+              <td class="px-5 py-3 text-gray-500">{{ typeMeta[req.type].label }}</td>
+              <td class="px-5 py-3 text-gray-500">{{ req.created_at | date:'dd/MM/yyyy' }}</td>
+              <td class="px-5 py-3">
+                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium" [class]="statusMeta[req.status].badgeClass">
+                  <span class="w-1.5 h-1.5 rounded-full" [class]="statusMeta[req.status].dotClass"></span>
+                  {{ statusMeta[req.status].label }}
+                </span>
+              </td>
+              <td class="px-5 py-3 text-right">
+                <button (click)="openReview(req)"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-100">
+                  Traiter
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div *ngIf="sortedRequests().length === 0" class="bg-white rounded-xl p-12 text-center border border-gray-200">
+      <div class="w-14 h-14 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">
+        <app-icon name="inbox" [size]="26" />
+      </div>
+      <h3 class="text-lg font-semibold text-gray-800 mt-3">File d'attente vide</h3>
+      <p class="text-sm text-gray-500 mt-1">Aucune demande employé à traiter pour le moment.</p>
+    </div>
+  </ng-container>
+</div>
+
+<!-- Review / action drawer -->
+<div *ngIf="selectedRequest() as req" class="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm" (click)="closeReview()">
+  <div class="w-full max-w-md h-full bg-white shadow-2xl flex flex-col" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <h3 class="text-lg font-bold text-gray-900">Traiter la demande</h3>
+      <button type="button" (click)="closeReview()" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+        <app-icon name="x" [size]="18" />
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+      <!-- Employee & request details -->
+      <div class="space-y-3">
+        <div class="flex items-center gap-2 text-sm">
+          <span class="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center"><app-icon name="user" [size]="16" /></span>
+          <div>
+            <div class="font-semibold text-gray-900">{{ req.user_name || 'Employé' }}</div>
+            <div class="text-xs text-gray-400">Soumise le {{ req.created_at | date:'dd/MM/yyyy à HH:mm' }}</div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-gray-50 border border-gray-100 space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-400">Type</span>
+            <span class="font-medium text-gray-800">{{ typeMeta[req.type].label }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-400">Objet</span>
+            <span class="font-medium text-gray-800 text-right">{{ req.title }}</span>
+          </div>
+          <div *ngIf="req.start_date" class="flex justify-between text-sm">
+            <span class="text-gray-400">Période</span>
+            <span class="font-medium text-gray-800">{{ req.start_date | date:'dd/MM/yyyy' }} → {{ req.end_date | date:'dd/MM/yyyy' }}</span>
+          </div>
+          <div *ngIf="req.description" class="text-sm text-gray-600 pt-1 border-t border-gray-200">{{ req.description }}</div>
+        </div>
+
+        <!-- Attached files -->
+        <div *ngIf="req.attachments && req.attachments.length > 0">
+          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pièces jointes</div>
+          <a *ngFor="let att of req.attachments" [href]="att" target="_blank" rel="noopener"
+            class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg text-sm text-indigo-600 hover:bg-gray-50 mb-1">
+            <app-icon name="file" [size]="15" /> <span class="truncate">{{ att }}</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Current status -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut actuel</span>
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium" [class]="statusMeta[req.status].badgeClass">
+          <span class="w-1.5 h-1.5 rounded-full" [class]="statusMeta[req.status].dotClass"></span>
+          {{ statusMeta[req.status].label }}
+        </span>
+      </div>
+
+      <!-- Admin note -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Note RH / motif</label>
+        <textarea [ngModel]="adminNote()" (ngModelChange)="adminNote.set($event)" rows="3"
+          placeholder="Note interne, motif de refus, instructions..."
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+      </div>
+
+      <!-- PDF upload -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Document généré (PDF)</label>
+        <label class="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 cursor-pointer">
+          <app-icon name="upload" [size]="16" />
+          <span>{{ pdfFile()?.name || 'Joindre le PDF (fiche de paie, attestation...)' }}</span>
+          <input type="file" accept="application/pdf" (change)="onPdfSelected($event)" class="hidden" />
+        </label>
+        <p class="text-xs text-gray-400 mt-1">Requis pour « Marquer prêt ».</p>
+      </div>
+
+      <p *ngIf="actionError()" class="text-sm text-red-500">{{ actionError() }}</p>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 space-y-2">
+      <div class="grid grid-cols-2 gap-2">
+        <button (click)="applyStatus('IN_PROGRESS')" [disabled]="isSaving()"
+          class="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-blue-300 rounded-lg text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50">
+          <app-icon name="clock" [size]="15" /> En cours
+        </button>
+        <button (click)="applyStatus('APPROVED')" [disabled]="isSaving()"
+          class="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-green-300 rounded-lg text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50">
+          <app-icon name="check" [size]="15" /> Approuver
+        </button>
+        <button (click)="applyStatus('REJECTED')" [disabled]="isSaving()"
+          class="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-red-300 rounded-lg text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50">
+          <app-icon name="x" [size]="15" /> Rejeter
+        </button>
+        <button (click)="applyStatus('READY_FOR_DOWNLOAD')" [disabled]="isSaving()"
+          class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
+          <app-icon name="check-circle" [size]="15" /> Marquer prêt
+        </button>
+      </div>
+      <p *ngIf="isSaving()" class="text-xs text-center text-gray-400">Enregistrement...</p>
+    </div>
+  </div>
+</div>
