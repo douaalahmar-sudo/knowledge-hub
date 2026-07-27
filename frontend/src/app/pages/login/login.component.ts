@@ -32,10 +32,10 @@ export class LoginComponent
         }
         this.isLoading.set(true);
         this.errorMessage.set(null);
-        // Using 'login' as the key to perfectly match your Laravel backend requirements
+        // Backend AuthController@login validates `email` + `password`.
         this.authService.login(
         {
-            login: this.email(), password: this.password()
+            email: this.email(), password: this.password()
         })
         .subscribe(
         {

@@ -1,0 +1,58 @@
+<div class="relative w-full max-w-xl">
+  <!-- Input -->
+  <div class="relative">
+    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><app-icon name="search" [size]="16" /></span>
+    <input
+      type="text"
+      [value]="query()"
+      (input)="onInput($any($event.target).value)"
+      (focus)="onFocus()"
+      (keyup.enter)="onEnter()"
+      placeholder="Rechercher procédures, articles, écarts, demandes RH..."
+      class="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" />
+    <span *ngIf="isLoading()" class="absolute right-3 top-1/2 -translate-y-1/2">
+      <span class="inline-block animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></span>
+    </span>
+  </div>
+
+  <!-- Dropdown -->
+  <div *ngIf="isOpen() && query().trim().length >= 2"
+    class="absolute z-50 mt-2 w-full bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
+
+    <!-- Results -->
+    <div *ngIf="hasResults()" class="max-h-[70vh] overflow-y-auto py-1">
+      <div *ngFor="let group of groups()" class="py-1">
+        <div class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+          <span class="w-5 h-5 rounded flex items-center justify-center" [class]="group.iconClass">
+            <app-icon [name]="group.icon" [size]="12" />
+          </span>
+          {{ group.label }}
+        </div>
+        <button
+          *ngFor="let item of group.items"
+          type="button"
+          (click)="selectItem(item)"
+          class="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-start gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-medium text-gray-800 truncate">{{ item.title }}</div>
+            <div *ngIf="item.description" class="text-xs text-gray-400 truncate">{{ item.description }}</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- No results -->
+    <div *ngIf="!hasResults() && !isLoading()" class="px-4 py-6 text-center text-sm text-gray-400">
+      Aucun résultat pour « {{ query().trim() }} »
+    </div>
+
+    <!-- Footer: view all -->
+    <button
+      type="button"
+      (click)="goToResults()"
+      class="w-full text-left px-4 py-3 border-t border-gray-100 bg-gray-50 hover:bg-gray-100 text-sm font-medium text-indigo-600 flex items-center gap-2">
+      <app-icon name="search" [size]="14" />
+      Voir tous les résultats pour « {{ query().trim() }} »
+    </button>
+  </div>
+</div>

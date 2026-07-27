@@ -7,6 +7,7 @@ use App\Http\Controllers\ProcedureVersionController;
 use App\Http\Controllers\KaizenController;
 use App\Http\Controllers\HrRequestController;
 use App\Http\Controllers\ArticleController;
+use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\Api\EtapeWorkflowController;
 use App\Http\Middleware\ResolveTenantContext;
 
@@ -26,6 +27,11 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware(['auth:sanctum', ResolveTenantContext::class])->group(function () {
     
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // --- GLOBAL SEARCH ENGINE (Module 3) ---
+    Route::prefix('v1')->group(function () {
+        Route::get('/search', [GlobalSearchController::class, 'search']);
+    });
 
     // --- KNOWLEDGE BASE / HR ARTICLES (Module 1) ---
     Route::prefix('v1')->group(function () {

@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './guards/auth.guard';
+import { roleGuard } from './guards/role.guard';
 
 
 export const routes: Routes = [
@@ -8,10 +10,20 @@ export const routes: Routes = [
         redirectTo: 'dashboard',
         pathMatch: 'full'
     },
+    // Public authentication routes
+    {
+        path: 'login',
+        loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
+    },
+    {
+        path: 'register',
+        loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent)
+    },
     // 2. Primary Application Shell (single sidebar + header wrapper).
     //    All child views render inside LayoutShellComponent's <router-outlet>.
     {
         path: 'dashboard',
+        canActivate: [authGuard],
         loadComponent: () => import('./components/layout-shell/layout-shell.component').then(m => m.LayoutShellComponent),
         children: [
             // /dashboard -> Executive dashboard & procedures
@@ -25,36 +37,49 @@ export const routes: Routes = [
                 path: 'procedures',
                 loadComponent: () => import('./pages/procedures-list/procedures-list.component').then(m => m.ProceduresListComponent)
             },
-            // /dashboard/kaizen -> Kaizen reports & écarts
+            // /dashboard/search -> Global search results (Module 3)
+            {
+                path: 'search',
+                loadComponent: () => import('./features/search/search-results.component').then(m => m.SearchResultsComponent)
+            },
+            // /dashboard/kaizen -> Kaizen reports & écarts (not for pure HR self-service users)
             {
                 path: 'kaizen',
+                canActivate: [roleGuard],
+                data: { roles: ['EMPLOYEE'] },
                 loadComponent: () => import('./pages/kaizen-reports/kaizen-reports.component').then(m => m.KaizenReportsComponent)
             },
             // ---- HR Self-Service module (Module 2) ----
-            // /dashboard/hr-requests -> Employee "Mes Demandes"
+            // /dashboard/hr-requests -> Employee "Mes Demandes" (any authenticated user)
             {
                 path: 'hr-requests',
                 loadComponent: () => import('./features/hr-requests/hr-request-list/hr-request-list.component').then(m => m.HrRequestListComponent)
             },
-            // /dashboard/hr-admin -> HR Admin processing portal
+            // /dashboard/hr-admin -> HR Admin processing portal (HR admins only)
             {
                 path: 'hr-admin',
+                canActivate: [roleGuard],
+                data: { roles: ['HR_ADMIN'] },
                 loadComponent: () => import('./features/hr-requests/hr-admin-portal/hr-admin-portal.component').then(m => m.HrAdminPortalComponent)
             },
             // ---- Knowledge Base module ----
-            // /dashboard/knowledge-base -> KB portal
+            // /dashboard/knowledge-base -> KB portal (everyone can read)
             {
                 path: 'knowledge-base',
                 loadComponent: () => import('./features/articles/article-list/article-list.component').then(m => m.ArticleListComponent)
             },
-            // /dashboard/knowledge-base/new -> create article (must precede :slug)
+            // /dashboard/knowledge-base/new -> create article (authors only; must precede :slug)
             {
                 path: 'knowledge-base/new',
+                canActivate: [roleGuard],
+                data: { roles: ['HR_ADMIN'] },
                 loadComponent: () => import('./features/articles/article-editor/article-editor.component').then(m => m.ArticleEditorComponent)
             },
-            // /dashboard/knowledge-base/edit/:slug -> edit article
+            // /dashboard/knowledge-base/edit/:slug -> edit article (authors only)
             {
                 path: 'knowledge-base/edit/:slug',
+                canActivate: [roleGuard],
+                data: { roles: ['HR_ADMIN'] },
                 loadComponent: () => import('./features/articles/article-editor/article-editor.component').then(m => m.ArticleEditorComponent)
             },
             // /dashboard/knowledge-base/:slug -> article reader

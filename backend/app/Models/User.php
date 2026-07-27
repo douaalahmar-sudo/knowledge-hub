@@ -18,6 +18,7 @@ class User extends Authenticatable
         'matricule',
         'store_id',
         'role_id',
+        'tenant_id',
     ];
 
     /**
@@ -26,5 +27,13 @@ class User extends Authenticatable
     public function role()
     {
         return $this->belongsTo(Role::class);
+    }
+
+    /**
+     * Relationship: User belongs to a Tenant/store.
+     */
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }
