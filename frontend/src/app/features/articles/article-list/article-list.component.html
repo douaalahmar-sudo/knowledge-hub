@@ -6,6 +6,7 @@
       <p class="text-sm text-gray-500">Guides, annonces officielles et politiques de l'entreprise</p>
     </div>
     <a
+      *ngIf="canAuthor"
       routerLink="/dashboard/knowledge-base/new"
       class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
       <span>+ Rédiger un article</span>
@@ -53,7 +54,18 @@
     <p class="mt-2 text-sm">Chargement des articles...</p>
   </div>
 
-  <ng-container *ngIf="!isLoading">
+  <!-- Error State -->
+  <div *ngIf="!isLoading && errorMessage" class="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+    <p class="text-sm font-medium text-red-700">{{ errorMessage }}</p>
+    <button
+      type="button"
+      (click)="loadArticles()"
+      class="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors">
+      Réessayer
+    </button>
+  </div>
+
+  <ng-container *ngIf="!isLoading && !errorMessage">
     <!-- Featured / Pinned Announcements Hero -->
     <section *ngIf="showFeatured" class="space-y-3">
       <div class="flex items-center gap-2 text-indigo-600">

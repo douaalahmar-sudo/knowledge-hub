@@ -1,0 +1,50 @@
+<div class="relative">
+  <!-- Bell trigger -->
+  <button
+    type="button"
+    (click)="toggle()"
+    class="relative w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
+    aria-label="Notifications">
+    <app-icon name="bell" [size]="17" />
+    <span
+      *ngIf="unreadCount() > 0"
+      class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+      {{ unreadCount() > 9 ? '9+' : unreadCount() }}
+    </span>
+  </button>
+
+  <!-- Dropdown -->
+  <div
+    *ngIf="isOpen()"
+    class="absolute right-0 z-50 mt-2 w-80 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
+
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <span class="text-sm font-semibold text-gray-900">Notifications</span>
+      <span *ngIf="unreadCount() > 0" class="text-xs font-medium text-indigo-600">{{ unreadCount() }} non lue(s)</span>
+    </div>
+
+    <div class="max-h-96 overflow-y-auto">
+      <button
+        *ngFor="let n of notifications()"
+        type="button"
+        (click)="open(n)"
+        class="w-full text-left px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 flex items-start gap-3 transition-colors"
+        [class.bg-indigo-50]="!n.read">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" [class]="typeMeta[n.type].iconClass">
+          <app-icon [name]="typeMeta[n.type].icon" [size]="15" />
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-sm font-medium text-gray-800 truncate">{{ n.title }}</span>
+          <span *ngIf="n.message" class="block text-xs text-gray-500 line-clamp-2 mt-0.5">{{ n.message }}</span>
+          <span class="block text-[11px] text-gray-400 mt-1">{{ n.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+        </span>
+        <span *ngIf="!n.read" class="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 shrink-0"></span>
+      </button>
+
+      <!-- Empty state -->
+      <div *ngIf="notifications().length === 0" class="px-4 py-8 text-center text-sm text-gray-400">
+        Aucune notification pour le moment.
+      </div>
+    </div>
+  </div>
+</div>

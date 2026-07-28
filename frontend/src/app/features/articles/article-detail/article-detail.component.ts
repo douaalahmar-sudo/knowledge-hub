@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ArticleService, Article } from '../../../core/services/article.service';
 import { ProcedureService } from '../../../services/procedure.service';
 import { IconComponent } from '../../../shared/icon/icon.component';
+import { AuthService } from '../../../services/auth.service';
 
 
 @Component(
@@ -21,6 +22,10 @@ export class ArticleDetailComponent implements OnInit
     private route = inject(ActivatedRoute);
     private articleService = inject(ArticleService);
     private procedureService = inject(ProcedureService);
+    private auth = inject(AuthService);
+
+    /** Only authors (matches the knowledge-base/edit route guard) see the "edit" CTA. */
+    canEdit = this.auth.canAccess(['hr_admin', 'expert_metier']);
 
     article: Article | null = null;
     isLoading = true;

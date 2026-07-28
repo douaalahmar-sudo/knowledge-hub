@@ -1,14 +1,15 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, NavigationStart, Router } from '@angular/router';
 import { GlobalSearchComponent } from '../../shared/components/global-search/global-search.component';
-import { AuthService } from '../../services/auth.service';
+import { NotificationCenterComponent } from '../../shared/components/notification-center/notification-center.component';
+import { AuthService, ROLE_LABELS, DemoRole } from '../../services/auth.service';
 
 
 @Component(
 {
     selector: 'app-layout-shell',
     standalone: true,
-    imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearchComponent],
+    imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearchComponent, NotificationCenterComponent],
     templateUrl: './layout-shell.component.html',
     styleUrls: ['./layout-shell.component.scss']
 })
@@ -23,7 +24,10 @@ export class LayoutShellComponent
     role = this.auth.role;
     tenantName = computed<string>(() => this.auth.currentTenant()?.name ?? 'FLESK Store #101 - Tunis');
     userName = computed<string>(() => this.auth.currentUser()?.name ?? 'Utilisateur');
-    roleLabel = computed<string>(() => this.auth.role() ?? 'invité');
+    roleLabel = computed<string>(() => {
+        const r = this.auth.role() as DemoRole | null;
+        return (r && ROLE_LABELS[r]) ?? 'Invité';
+    });
     initials = computed<string>(() =>
         this.userName().split(' ').map(p => p[0] ?? '').join('').slice(0, 2).toUpperCase() || 'U'
     );

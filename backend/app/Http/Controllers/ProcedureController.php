@@ -6,6 +6,7 @@ use App\Models\Procedure;
 use App\Models\ProcedureVersion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ProcedureController extends Controller
 {
@@ -20,24 +21,69 @@ class ProcedureController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'reference' => 'required|string|unique:procedures,reference|max:50',
-            'name'      => 'required|string|max:255',
-            'module'    => 'required|string|max:255',
-            'status'    => 'string|in:Validé,En attente',
+            'reference_code' => 'required|string|unique:procedures,reference_code|max:50',
+            'name'        => 'required|string|max:255',
+            'module'      => 'required|string|max:255',
+            'category'    => 'nullable|string|max:255',
+            'department'  => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:5000',
+            'status'      => 'string|in:Validé,En attente',
+            'version'     => 'nullable|string|max:20',
+
+            // Paths previously returned by POST /procedures/upload-triptych. The
+            // form uploads first, then creates the procedure with the results.
+            'pdf_path'          => 'nullable|string|max:255',
+            'video_path'        => 'nullable|string|max:255',
+            'infographic_path'  => 'nullable|string|max:255',
         ]);
 
         $procedure = DB::transaction(function () use ($validated, $request) {
-            return Procedure::create([
+            return Procedure::create(array_merge($validated, [
                 'tenant_id' => $request->user()->tenant_id,
                 'created_by' => $request->user()->id,
-                'reference' => $validated['reference'],
-                'name' => $validated['name'],
-                'module' => $validated['module'],
                 'status' => $validated['status'] ?? 'En attente',
-            ]);
+                'version' => $validated['version'] ?? '1.0',
+            ]));
         });
 
         return response()->json($procedure, 201);
+    }
+
+    // 2b. Edit a procedure's metadata + asset pointers in place.
+    //
+    // Distinct from update() below, which appends a whole new *version*. The
+    // triptych edit form (Task #16) only ever amends the current record, so it
+    // needs a route that does not fabricate version history on every save.
+    public function updateMeta(Request $request, $id)
+    {
+        $procedure = Procedure::find($id);
+
+        if (! $procedure) {
+            return response()->json(['message' => 'Procédure introuvable.'], 404);
+        }
+
+        $validated = $request->validate([
+            'reference_code' => [
+                'sometimes', 'string', 'max:50',
+                Rule::unique('procedures', 'reference_code')->ignore($procedure->id),
+            ],
+            'name'        => 'sometimes|string|max:255',
+            'module'      => 'sometimes|string|max:255',
+            'category'    => 'nullable|string|max:255',
+            'department'  => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:5000',
+            'status'      => 'sometimes|string|in:Validé,En attente',
+            'version'     => 'sometimes|string|max:20',
+            'is_active'   => 'sometimes|boolean',
+
+            'pdf_path'          => 'nullable|string|max:255',
+            'video_path'        => 'nullable|string|max:255',
+            'infographic_path'  => 'nullable|string|max:255',
+        ]);
+
+        $procedure->fill($validated)->save();
+
+        return response()->json($procedure->fresh(), 200);
     }
 
     // 3. View a specific procedure along with its complete version history

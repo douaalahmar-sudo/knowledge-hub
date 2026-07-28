@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of } from 'rxjs';
+import { catchError, finalize } from 'rxjs/operators';
 import { KaizenReportService } from '../../services/kaizen-report.service';
 import { ProcedureService } from '../../services/procedure.service';
 import { AuthService } from '../../services/auth.service';
@@ -41,18 +43,41 @@ export class KaizenReportsComponent implements OnInit {
         this.fetchData();
     }
 
+    /**
+     * Loads procedures + Kaizen signals together.
+     *
+     * Previously `isLoading` was cleared only by the *procedures* stream while the
+     * Kaizen list's spinner was bound to it — so if procedures never emitted, the
+     * list stayed on "Chargement..." indefinitely even when the Kaizen data had
+     * arrived. `finalize` now guarantees the flag resets on success, empty result
+     * OR error, and each stream degrades independently via `catchError` so one
+     * failure doesn't blank out the other's data.
+     */
     fetchData(): void {
-        this.procedureService.getProcedures().subscribe({
-            next: () => this.isLoading.set(false),
-            error: () => {
-                this.errorMessage.set('Impossible de charger les procédures.');
-                this.isLoading.set(false);
-            }
-        });
+        this.isLoading.set(true);
+        this.errorMessage.set(null);
 
-        this.kaizenService.getReports().subscribe({
-            next: () => undefined,
-            error: () => this.errorMessage.set('Impossible de charger les signalements Kaizen.')
+        const failures: string[] = [];
+
+        forkJoin({
+            procedures: this.procedureService.getProcedures().pipe(
+                catchError(() => {
+                    failures.push('les procédures');
+                    return of([]);
+                })
+            ),
+            reports: this.kaizenService.getReports().pipe(
+                catchError(() => {
+                    failures.push('les signalements Kaizen');
+                    return of([]);
+                })
+            )
+        })
+        .pipe(finalize(() => this.isLoading.set(false)))
+        .subscribe(() => {
+            if (failures.length) {
+                this.errorMessage.set(`Impossible de charger ${failures.join(' et ')}.`);
+            }
         });
     }
 

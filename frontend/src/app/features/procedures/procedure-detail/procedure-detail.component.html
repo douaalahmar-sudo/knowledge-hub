@@ -1,0 +1,277 @@
+<div class="pd-page">
+  <div class="pd-shell">
+
+    @if (isLoading()) {
+      <div class="pd-card pd-state">
+        <div class="pd-spinner"></div>
+        <p>Chargement de la procédure…</p>
+      </div>
+    }
+
+    @if (!isLoading() && loadError()) {
+      <div class="pd-card pd-state pd-state--error">
+        <app-icon name="alert" [size]="26" />
+        <p>{{ loadError() }}</p>
+        <a routerLink="/dashboard/procedures" class="pd-btn pd-btn--ghost">Retour à la liste</a>
+      </div>
+    }
+
+    <!-- `as` aliasing is only valid on a primary @if, so the content block is
+         its own @if rather than an @else if on the states above. -->
+    @if (procedure(); as proc) {
+
+      <!-- ----------------------------------------------------- header --- -->
+      <header class="pd-header">
+        <div class="pd-header__main">
+          <a routerLink="/dashboard/procedures" class="pd-back">
+            <app-icon name="arrow-left" [size]="15" />
+            <span>Retour aux procédures</span>
+          </a>
+
+          <div class="pd-meta-row">
+            <span class="pd-ref">{{ proc.reference_code }}</span>
+            <span class="pd-chip" [class.pd-chip--ok]="proc.status === 'Validé'">{{ proc.status }}</span>
+            <span class="pd-chip pd-chip--muted">v{{ proc.version }}</span>
+            @if (!proc.is_active) { <span class="pd-chip pd-chip--warn">Archivée</span> }
+          </div>
+
+          <h1 class="pd-title">{{ proc.name }}</h1>
+
+          @if (proc.description) {
+            <p class="pd-description">{{ proc.description }}</p>
+          }
+
+          <dl class="pd-facts">
+            <div><dt>Module</dt><dd>{{ proc.module }}</dd></div>
+            @if (proc.category) { <div><dt>Catégorie</dt><dd>{{ proc.category }}</dd></div> }
+            @if (proc.department) { <div><dt>Département</dt><dd>{{ proc.department }}</dd></div> }
+            <div><dt>Formats</dt><dd>{{ availableCount() }} / 3 disponibles</dd></div>
+          </dl>
+        </div>
+
+        <a [routerLink]="['/dashboard/procedures', proc.id, 'edit']" class="pd-btn pd-btn--ghost">
+          <app-icon name="edit" [size]="15" /> Modifier
+        </a>
+      </header>
+
+      <!-- ------------------------------------------------ tab viewer --- -->
+      <section class="pd-card pd-viewer">
+
+        <!-- Tab header bar -->
+        <div class="pd-tabs" role="tablist" aria-label="Formats de la procédure">
+          @for (tab of tabs; track tab.format) {
+            @let enabled = isAvailable(tab.format);
+            @let active = activeTab() === tab.format;
+
+            <button type="button"
+                    class="pd-tab"
+                    [class.pd-tab--active]="active"
+                    [class.pd-tab--disabled]="!enabled"
+                    role="tab"
+                    [id]="'tab-' + tab.format"
+                    [attr.aria-selected]="active"
+                    [attr.aria-controls]="'panel-' + tab.format"
+                    [attr.aria-disabled]="!enabled"
+                    [disabled]="!enabled"
+                    [tabIndex]="active ? 0 : -1"
+                    (click)="selectTab(tab.format)"
+                    (keydown)="onTabKeydown($event, tab.format)">
+              <span class="pd-tab__icon"><app-icon [name]="tab.icon" [size]="18" /></span>
+              <span class="pd-tab__label">{{ tab.label }}</span>
+              @if (!enabled) {
+                <span class="pd-tab__badge">Non disponible</span>
+              }
+            </button>
+          }
+        </div>
+
+        <!-- ============================================ PDF (Task #18) === -->
+        @if (activeTab() === 'pdf') {
+          <div class="pd-panel" role="tabpanel" id="panel-pdf" aria-labelledby="tab-pdf">
+            <div class="pd-toolbar">
+              <div class="pd-toolbar__group">
+                <button type="button" class="pd-ctl" (click)="changePdfPage(-1)"
+                        [disabled]="pdfPage() <= 1" aria-label="Page précédente">‹</button>
+                <span class="pd-toolbar__readout">Page {{ pdfPage() }}</span>
+                <button type="button" class="pd-ctl" (click)="changePdfPage(1)"
+                        aria-label="Page suivante">›</button>
+              </div>
+
+              <div class="pd-toolbar__group">
+                <button type="button" class="pd-ctl" (click)="zoomPdf(-25)"
+                        [disabled]="pdfZoom() <= 50" aria-label="Dézoomer">
+                  <app-icon name="zoom-out" [size]="15" />
+                </button>
+                <button type="button" class="pd-ctl pd-ctl--wide" (click)="resetPdfZoom()">
+                  {{ pdfZoom() }}%
+                </button>
+                <button type="button" class="pd-ctl" (click)="zoomPdf(25)"
+                        [disabled]="pdfZoom() >= 300" aria-label="Zoomer">
+                  <app-icon name="zoom-in" [size]="15" />
+                </button>
+              </div>
+
+              <div class="pd-toolbar__group">
+                <a class="pd-ctl pd-ctl--wide" [href]="available().pdf" target="_blank" rel="noopener">
+                  <app-icon name="external" [size]="14" /> Plein écran
+                </a>
+                <a class="pd-ctl pd-ctl--wide" [href]="available().pdf"
+                   [attr.download]="downloadName('pdf')">
+                  <app-icon name="download" [size]="14" /> Télécharger
+                </a>
+              </div>
+            </div>
+
+            <!-- Native browser PDF viewer. Page/zoom are driven through the URL
+                 fragment; the plugin's own toolbar remains available as a fallback. -->
+            <iframe class="pd-pdf"
+                    [src]="pdfSrc()"
+                    title="Document PDF de la procédure"
+                    loading="lazy"></iframe>
+
+            <p class="pd-note">
+              Les contrôles de page et de zoom sont transmis au lecteur PDF natif du
+              navigateur. Si votre navigateur les ignore, utilisez sa propre barre d’outils.
+            </p>
+          </div>
+        }
+
+        <!-- ========================================== VIDEO (Task #19) === -->
+        @if (activeTab() === 'video') {
+          <div class="pd-panel" role="tabpanel" id="panel-video" aria-labelledby="tab-video">
+            <div class="pd-video-stage">
+              <video #videoEl
+                     class="pd-video"
+                     [src]="available().video"
+                     preload="metadata"
+                     playsinline
+                     (click)="togglePlay()"
+                     (play)="onPlay()"
+                     (pause)="onPause()"
+                     (loadedmetadata)="onLoadedMetadata()"
+                     (timeupdate)="onTimeUpdate()">
+                Votre navigateur ne prend pas en charge la lecture vidéo.
+              </video>
+
+              @if (!isPlaying()) {
+                <button type="button" class="pd-video__overlay" (click)="togglePlay()"
+                        aria-label="Lire la vidéo">
+                  <span class="pd-video__play"><app-icon name="play" [size]="30" /></span>
+                </button>
+              }
+            </div>
+
+            <!-- Custom control bar -->
+            <div class="pd-vctl">
+              <button type="button" class="pd-ctl pd-ctl--round" (click)="togglePlay()"
+                      [attr.aria-label]="isPlaying() ? 'Pause' : 'Lecture'">
+                <app-icon [name]="isPlaying() ? 'pause' : 'play'" [size]="16" />
+              </button>
+
+              <button type="button" class="pd-ctl" (click)="skip(-10)" aria-label="Reculer de 10 secondes">
+                <app-icon name="rotate-ccw" [size]="15" />
+              </button>
+
+              <span class="pd-vctl__time">{{ formatTime(currentTime()) }}</span>
+
+              <input class="pd-scrub"
+                     type="range"
+                     min="0"
+                     [max]="duration() || 0"
+                     step="0.1"
+                     [value]="currentTime()"
+                     (input)="seek($event)"
+                     aria-label="Position de lecture"
+                     [style.--pd-progress]="progressCss()" />
+
+              <span class="pd-vctl__time">{{ formatTime(duration()) }}</span>
+
+              <button type="button" class="pd-ctl" (click)="toggleMute()"
+                      [attr.aria-label]="isMuted() ? 'Réactiver le son' : 'Couper le son'">
+                <app-icon [name]="isMuted() ? 'volume-x' : 'volume'" [size]="15" />
+              </button>
+
+              <div class="pd-rates" role="group" aria-label="Vitesse de lecture">
+                @for (r of rates; track r) {
+                  <button type="button"
+                          class="pd-rate"
+                          [class.pd-rate--active]="playbackRate() === r"
+                          (click)="setRate(r)">{{ r }}×</button>
+                }
+              </div>
+
+              <a class="pd-ctl pd-ctl--wide" [href]="available().video"
+                 [attr.download]="downloadName('video')">
+                <app-icon name="download" [size]="14" /> Télécharger
+              </a>
+            </div>
+          </div>
+        }
+
+        <!-- ==================================== INFOGRAPHIC (Task #19) === -->
+        @if (activeTab() === 'infographic') {
+          <div class="pd-panel" role="tabpanel" id="panel-infographic" aria-labelledby="tab-infographic">
+            <div class="pd-toolbar">
+              <div class="pd-toolbar__group">
+                <button type="button" class="pd-ctl" (click)="openLightbox()">
+                  <app-icon name="maximize" [size]="15" /> Plein écran
+                </button>
+                <a class="pd-ctl pd-ctl--wide" [href]="available().infographic"
+                   [attr.download]="downloadName('infographic')">
+                  <app-icon name="download" [size]="14" /> Télécharger
+                </a>
+              </div>
+            </div>
+
+            <button type="button" class="pd-figure" (click)="openLightbox()"
+                    aria-label="Agrandir l’infographie">
+              <img class="pd-figure__img"
+                   [src]="available().infographic"
+                   [alt]="'Infographie — ' + proc.name"
+                   loading="lazy" />
+              <span class="pd-figure__hint">
+                <app-icon name="zoom-in" [size]="14" /> Cliquez pour agrandir
+              </span>
+            </button>
+          </div>
+        }
+      </section>
+    }
+  </div>
+</div>
+
+<!-- ------------------------------------------------------------ lightbox --- -->
+@if (isLightboxOpen()) {
+  <div class="pd-lightbox" role="dialog" aria-modal="true" aria-label="Infographie plein écran"
+       (click)="closeLightbox()">
+    <div class="pd-lightbox__bar" (click)="$event.stopPropagation()">
+      <button type="button" class="pd-ctl pd-ctl--dark" (click)="zoomImage(0.8)"
+              [disabled]="imageZoom() <= 1" aria-label="Dézoomer">
+        <app-icon name="zoom-out" [size]="16" />
+      </button>
+      <span class="pd-lightbox__readout">{{ (imageZoom() * 100) | number:'1.0-0' }}%</span>
+      <button type="button" class="pd-ctl pd-ctl--dark" (click)="zoomImage(1.25)"
+              [disabled]="imageZoom() >= 5" aria-label="Zoomer">
+        <app-icon name="zoom-in" [size]="16" />
+      </button>
+      <a class="pd-ctl pd-ctl--dark" [href]="available().infographic"
+         [attr.download]="downloadName('infographic')" aria-label="Télécharger">
+        <app-icon name="download" [size]="16" />
+      </a>
+      <button type="button" class="pd-ctl pd-ctl--dark" (click)="closeLightbox()" aria-label="Fermer">
+        <app-icon name="x" [size]="16" />
+      </button>
+    </div>
+
+    <div class="pd-lightbox__stage" (click)="$event.stopPropagation()">
+      <img class="pd-lightbox__img"
+           [src]="available().infographic"
+           [style.transform]="'scale(' + imageZoom() + ')'"
+           [class.pd-lightbox__img--zoomed]="imageZoom() > 1"
+           alt="Infographie en plein écran"
+           (click)="toggleImageZoom()" />
+    </div>
+
+    <p class="pd-lightbox__esc">Échap pour fermer · cliquez sur l’image pour zoomer</p>
+  </div>
+}

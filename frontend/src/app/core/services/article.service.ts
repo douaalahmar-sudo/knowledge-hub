@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, defer, of, throwError } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { STORE_KEYS, lsRead, lsWrite, uid, slugify } from '../mock/local-store.util';
 import { SEED_ARTICLES } from '../mock/seed-data';
@@ -29,6 +29,8 @@ export interface Article {
   status: ArticleStatus;
   published_at?: string | null;
   tenant_id?: string;
+  /** Tenant name this article belongs to (name-based match, see AuthService.currentTenant()). */
+  tenant?: string;
   author_id?: number;
   author?: { id: number; name: string; email: string };
   cover_image_url?: string;
@@ -65,36 +67,54 @@ export interface ArticlePayload {
 export class ArticleService {
   private auth = inject(AuthService);
 
-  private all(): Article[] {
+  /** Unfiltered store — writes must read/write this, never the tenant-filtered `all()`,
+   *  or saving would silently drop every other tenant's articles from localStorage. */
+  private allRaw(): Article[] {
     return lsRead<Article[]>(STORE_KEYS.articles, SEED_ARTICLES);
   }
 
+  /** Missing `tenant` = visible to everyone (back-compat for data cached before this field existed). */
+  private matchesTenant(item: { tenant?: string }): boolean {
+    const tenant = this.auth.currentTenant()?.name;
+    return !tenant || !item.tenant || item.tenant === tenant;
+  }
+
+  private all(): Article[] {
+    return this.allRaw().filter(a => this.matchesTenant(a));
+  }
+
   // 1. List with optional category / search / status filters.
+  // `defer` keeps the store read inside the observable so a storage failure
+  // surfaces as an error notification rather than a synchronous throw.
   getArticles(params: ArticleQuery = {}): Observable<any> {
-    let list = this.all();
-    if (params.status) list = list.filter(a => a.status === params.status);
-    if (params.category) list = list.filter(a => a.category === params.category);
-    if (params.search) {
-      const q = params.search.toLowerCase();
-      list = list.filter(a =>
-        a.title.toLowerCase().includes(q) ||
-        (a.summary || '').toLowerCase().includes(q) ||
-        (a.content || '').toLowerCase().includes(q) ||
-        (a.tags || []).some(t => t.toLowerCase().includes(q))
-      );
-    }
-    return of(list);
+    return defer(() => {
+      let list = this.all();
+      if (params.status) list = list.filter(a => a.status === params.status);
+      if (params.category) list = list.filter(a => a.category === params.category);
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        list = list.filter(a =>
+          a.title.toLowerCase().includes(q) ||
+          (a.summary || '').toLowerCase().includes(q) ||
+          (a.content || '').toLowerCase().includes(q) ||
+          (a.tags || []).some(t => t.toLowerCase().includes(q))
+        );
+      }
+      return of(list);
+    });
   }
 
   // 2. Read one by slug.
   getArticleBySlug(slug: string): Observable<Article> {
-    const found = this.all().find(a => a.slug === slug);
-    return found ? of(found) : throwError(() => ({ error: { message: 'Article introuvable.' } }));
+    return defer(() => {
+      const found = this.all().find(a => a.slug === slug);
+      return found ? of(found) : throwError(() => ({ error: { message: 'Article introuvable.' } }));
+    });
   }
 
   // 3. Create.
   createArticle(payload: ArticlePayload): Observable<Article> {
-    const list = this.all();
+    const list = this.allRaw();
     const user = this.auth.currentUser();
     const article: Article = {
       id: uid('art_'),
@@ -107,6 +127,7 @@ export class ArticleService {
       status: payload.status as ArticleStatus,
       published_at: payload.status === 'published' ? new Date().toISOString() : null,
       author: { id: user?.id ?? 0, name: user?.name ?? 'Équipe RH', email: user?.email ?? '' },
+      tenant: this.auth.currentTenant()?.name,
       cover_image_url: payload.cover_image_url || '',
       attachments: (payload.attachmentFiles ?? []).map(f => ({ name: f.name, url: '#', size: f.size })),
       reading_time_minutes: this.estimateReadingTime(payload.content),
@@ -118,8 +139,8 @@ export class ArticleService {
 
   // 4. Update (partial — archive sends only status via a status-only payload).
   updateArticle(idOrSlug: string, payload: ArticlePayload): Observable<Article> {
-    const list = this.all();
-    const idx = list.findIndex(a => a.slug === idOrSlug || String(a.id) === String(idOrSlug));
+    const list = this.allRaw();
+    const idx = list.findIndex(a => (a.slug === idOrSlug || String(a.id) === String(idOrSlug)) && this.matchesTenant(a));
     if (idx < 0) return throwError(() => ({ error: { message: 'Article introuvable.' } }));
 
     const current = list[idx];
@@ -147,8 +168,8 @@ export class ArticleService {
 
   // 5. Archive.
   archiveArticle(idOrSlug: string): Observable<Article> {
-    const list = this.all();
-    const idx = list.findIndex(a => a.slug === idOrSlug || String(a.id) === String(idOrSlug));
+    const list = this.allRaw();
+    const idx = list.findIndex(a => (a.slug === idOrSlug || String(a.id) === String(idOrSlug)) && this.matchesTenant(a));
     if (idx < 0) return throwError(() => ({ error: { message: 'Article introuvable.' } }));
     list[idx] = { ...list[idx], status: 'archived', updated_at: new Date().toISOString() };
     lsWrite(STORE_KEYS.articles, list);

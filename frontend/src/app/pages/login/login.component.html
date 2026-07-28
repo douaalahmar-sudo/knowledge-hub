@@ -13,20 +13,31 @@
       </div>
     }
 
-    <form (ngSubmit)="handleLogin()">
-      
+    <form [formGroup]="form" (ngSubmit)="handleLogin()">
+
       <div style="margin-bottom: 20px;">
         <label style="display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 6px;">Adresse Email</label>
-        <input type="email" name="email" [ngModel]="email()" (ngModelChange)="email.set($event)" required
+        <input type="email" formControlName="email"
                style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 15px; transition: border-color 0.2s;"
+               [style.border-color]="email.invalid && email.touched ? '#dc2626' : '#d1d5db'"
                placeholder="nom@entreprise.com">
+        @if (email.invalid && email.touched) {
+          <p style="margin: 6px 0 0; font-size: 13px; color: #dc2626;">
+            @if (email.hasError('required')) { Adresse email requise. }
+            @else if (email.hasError('email')) { Format d'email invalide. }
+          </p>
+        }
       </div>
 
       <div style="margin-bottom: 24px;">
         <label style="display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 6px;">Mot de passe</label>
-        <input type="password" name="password" [ngModel]="password()" (ngModelChange)="password.set($event)" required
+        <input type="password" formControlName="password"
                style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 15px;"
+               [style.border-color]="password.invalid && password.touched ? '#dc2626' : '#d1d5db'"
                placeholder="••••••••">
+        @if (password.invalid && password.touched) {
+          <p style="margin: 6px 0 0; font-size: 13px; color: #dc2626;">Mot de passe requis.</p>
+        }
       </div>
 
       <button type="submit" [disabled]="isLoading()"

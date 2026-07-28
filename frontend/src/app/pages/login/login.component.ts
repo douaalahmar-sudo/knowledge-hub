@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 
 
@@ -8,7 +8,7 @@ import { AuthService } from '../../services/auth.service';
 {
     selector: 'app-login',
     standalone: true,
-imports: [FormsModule, RouterLink], templateUrl: './login.component.html',
+imports: [ReactiveFormsModule, RouterLink], templateUrl: './login.component.html',
     styleUrl: './login.component.scss'
 })
 
@@ -17,29 +17,34 @@ export class LoginComponent
 {
     private authService = inject(AuthService);
     private router = inject(Router);
-    email = signal('');
-    password = signal('');
+    private fb = inject(FormBuilder);
+
     isLoading = signal(false);
     errorMessage = signal<string | null>(null);
 
+    form = this.fb.nonNullable.group({
+        email: ['', [Validators.required, Validators.email]],
+        password: ['', [Validators.required]],
+    });
+
+    get email() { return this.form.controls.email; }
+    get password() { return this.form.controls.password; }
 
     handleLogin() : void
     {
-        if (!this.email() || !this.password())
+        if (this.form.invalid)
         {
-            this.errorMessage.set('Veuillez remplir tous les champs.');
+            this.form.markAllAsTouched();
+            this.errorMessage.set('Veuillez corriger les champs invalides.');
             return;
         }
         this.isLoading.set(true);
         this.errorMessage.set(null);
-        // Backend AuthController@login validates `email` + `password`.
-        this.authService.login(
-        {
-            email: this.email(), password: this.password()
-        })
+        // Frontend-only demo auth (AuthService) — see auth.service.ts DEMO_ACCOUNTS.
+        this.authService.login(this.form.getRawValue())
         .subscribe(
         {
-            next: (res) =>
+            next: () =>
             {
                 this.isLoading.set(false);
                 this.router.navigate(['/dashboard']);

@@ -2,8 +2,10 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs/operators';
 import { ArticleService, Article, ArticleCategory } from '../../../core/services/article.service';
 import { IconComponent } from '../../../shared/icon/icon.component';
+import { AuthService } from '../../../services/auth.service';
 
 
 interface CategoryCard {
@@ -27,9 +29,14 @@ interface CategoryCard {
 export class ArticleListComponent implements OnInit
 {
     private articleService = inject(ArticleService);
+    private auth = inject(AuthService);
+
+    /** Only authors (matches the knowledge-base/new route guard) see the "create" CTA. */
+    canAuthor = this.auth.canAccess(['hr_admin', 'expert_metier']);
 
     articles: Article[] = [];
     isLoading = true;
+    errorMessage: string | null = null;
     selectedCategory: '' | ArticleCategory = '';
     searchQuery = '';
 
@@ -51,24 +58,26 @@ export class ArticleListComponent implements OnInit
     loadArticles() : void
     {
         this.isLoading = true;
+        this.errorMessage = null;
         this.articleService.getArticles(
         {
             category: this.selectedCategory,
             search: this.searchQuery,
             status: 'published' // Employee portal shows published items only.
         })
+        // `finalize` guarantees the spinner clears on success, empty list, or error.
+        .pipe(finalize(() => this.isLoading = false))
         .subscribe(
         {
             next: (res) =>
             {
                 this.articles = res?.data ?? res ?? [];
-                this.isLoading = false;
             },
             error: (err) =>
             {
                 console.error('Error fetching articles', err);
                 this.articles = [];
-                this.isLoading = false;
+                this.errorMessage = err?.error?.message || 'Impossible de charger les articles.';
             }
         });
     }

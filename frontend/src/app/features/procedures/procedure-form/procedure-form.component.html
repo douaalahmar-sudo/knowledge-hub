@@ -1,0 +1,234 @@
+<div class="pf-page">
+  <div class="pf-shell">
+
+    <!-- ------------------------------------------------------- header --- -->
+    <header class="pf-header">
+      <div>
+        <a routerLink="/dashboard/procedures" class="pf-back">
+          <app-icon name="arrow-left" [size]="15" />
+          <span>Retour aux procédures</span>
+        </a>
+        <p class="pf-eyebrow">Triptyque documentaire</p>
+        <h1 class="pf-title">
+          {{ isEditMode() ? 'Modifier la procédure' : 'Nouvelle procédure' }}
+        </h1>
+        <p class="pf-subtitle">
+          Renseignez la fiche puis déposez jusqu’à trois formats — document PDF,
+          vidéo explicative et infographie. Chaque format est facultatif, mais au
+          moins un est requis.
+        </p>
+      </div>
+    </header>
+
+    @if (isLoading()) {
+      <div class="pf-card pf-state">
+        <div class="pf-spinner"></div>
+        <p>Chargement de la procédure…</p>
+      </div>
+    } @else if (loadError()) {
+      <div class="pf-card pf-state pf-state--error">
+        <app-icon name="alert" [size]="24" />
+        <p>{{ loadError() }}</p>
+        <a routerLink="/dashboard/procedures" class="pf-btn pf-btn--ghost">Retour à la liste</a>
+      </div>
+    } @else {
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="pf-form">
+
+        <!-- ------------------------------------------------ metadata --- -->
+        <section class="pf-card">
+          <div class="pf-card__head">
+            <h2 class="pf-card__title">Informations générales</h2>
+            <p class="pf-card__hint">Identité et classement de la procédure.</p>
+          </div>
+
+          <div class="pf-grid">
+            <div class="pf-field pf-field--wide">
+              <label for="name">Titre <span class="pf-req">*</span></label>
+              <input id="name" type="text" formControlName="name"
+                     placeholder="Procédure Ouverture &amp; Fermeture de Caisse"
+                     [class.pf-invalid]="fieldError('name')" />
+              @if (fieldError('name')) { <p class="pf-error">{{ fieldError('name') }}</p> }
+            </div>
+
+            <div class="pf-field">
+              <label for="reference_code">Code / Référence <span class="pf-req">*</span></label>
+              <input id="reference_code" type="text" formControlName="reference_code"
+                     placeholder="SOP-PR-001"
+                     [class.pf-invalid]="fieldError('reference_code')" />
+              @if (fieldError('reference_code')) {
+                <p class="pf-error">{{ fieldError('reference_code') }}</p>
+              } @else {
+                <p class="pf-help">Unique dans tout le référentiel (règle « Zéro doublon »).</p>
+              }
+            </div>
+
+            <div class="pf-field">
+              <label for="version">Version</label>
+              <input id="version" type="text" formControlName="version" placeholder="1.0" />
+            </div>
+
+            <div class="pf-field">
+              <label for="module">Module <span class="pf-req">*</span></label>
+              <select id="module" formControlName="module">
+                @for (m of modules; track m) { <option [value]="m">{{ m }}</option> }
+              </select>
+            </div>
+
+            <div class="pf-field">
+              <label for="category">Catégorie</label>
+              <select id="category" formControlName="category">
+                <option value="">— Non classée —</option>
+                @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            </div>
+
+            <div class="pf-field">
+              <label for="department">Département</label>
+              <select id="department" formControlName="department">
+                <option value="">— Tous départements —</option>
+                @for (d of departments; track d) { <option [value]="d">{{ d }}</option> }
+              </select>
+            </div>
+
+            <div class="pf-field">
+              <label for="status">Statut</label>
+              <select id="status" formControlName="status">
+                <option value="En attente">En attente</option>
+                <option value="Validé">Validé</option>
+              </select>
+            </div>
+
+            <div class="pf-field pf-field--wide">
+              <label for="description">Description</label>
+              <textarea id="description" formControlName="description" rows="4"
+                        placeholder="Objet de la procédure, périmètre d’application, points de vigilance…"></textarea>
+              @if (fieldError('description')) { <p class="pf-error">{{ fieldError('description') }}</p> }
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------------------------- triptych --- -->
+        <section class="pf-card">
+          <div class="pf-card__head">
+            <h2 class="pf-card__title">Les 3 formats du triptyque</h2>
+            <p class="pf-card__hint">
+              Glissez-déposez un fichier ou cliquez pour parcourir. Le téléversement
+              démarre immédiatement.
+            </p>
+          </div>
+
+          <div class="pf-slots">
+            @for (format of formats; track format) {
+              @let s = slot(format);
+              @let sp = spec(format);
+
+              <div class="pf-slot"
+                   [class.pf-slot--dragging]="s.dragging"
+                   [class.pf-slot--done]="s.uploadedPath || s.existingUrl"
+                   [class.pf-slot--error]="s.error"
+                   (dragover)="onDragOver($event, format)"
+                   (dragleave)="onDragLeave($event, format)"
+                   (drop)="onDrop($event, format)">
+
+                <div class="pf-slot__head">
+                  <span class="pf-slot__icon"><app-icon [name]="sp.icon" [size]="20" /></span>
+                  <div>
+                    <h3 class="pf-slot__label">{{ sp.label }}</h3>
+                    <p class="pf-slot__hint">{{ sp.hint }}</p>
+                  </div>
+                </div>
+
+                <!-- Drop target. The whole label is clickable and keyboard-reachable
+                     through the visually-hidden file input it wraps. -->
+                <label class="pf-drop" [attr.for]="'file-' + format">
+                  <input class="pf-drop__input"
+                         [id]="'file-' + format"
+                         type="file"
+                         [accept]="sp.accept"
+                         (change)="onFileInput($event, format)" />
+
+                  @if (s.progress !== null) {
+                    <div class="pf-drop__body">
+                      <p class="pf-drop__name">{{ s.file?.name }}</p>
+                      <div class="pf-progress" role="progressbar"
+                           [attr.aria-valuenow]="s.progress" aria-valuemin="0" aria-valuemax="100">
+                        <div class="pf-progress__bar" [style.width.%]="s.progress"></div>
+                      </div>
+                      <p class="pf-drop__meta">Téléversement… {{ s.progress }}%</p>
+                    </div>
+                  } @else if (s.uploadedPath) {
+                    <div class="pf-drop__body">
+                      <span class="pf-badge pf-badge--ok">
+                        <app-icon name="check-circle" [size]="14" /> Téléversé
+                      </span>
+                      <p class="pf-drop__name">{{ s.file?.name }}</p>
+                      <p class="pf-drop__meta">{{ formatBytes(s.file?.size || 0) }}</p>
+                    </div>
+                  } @else if (s.existingUrl) {
+                    <div class="pf-drop__body">
+                      <span class="pf-badge pf-badge--ok">
+                        <app-icon name="check-circle" [size]="14" /> Déjà en ligne
+                      </span>
+                      <p class="pf-drop__meta">Déposez un fichier pour le remplacer.</p>
+                    </div>
+                  } @else {
+                    <div class="pf-drop__body">
+                      <span class="pf-drop__glyph"><app-icon name="upload" [size]="22" /></span>
+                      <p class="pf-drop__name">Glissez un fichier ici</p>
+                      <p class="pf-drop__meta">ou cliquez pour parcourir · max {{ sp.maxLabel }}</p>
+                    </div>
+                  }
+                </label>
+
+                @if (s.error) {
+                  <p class="pf-slot__error" role="alert">
+                    <app-icon name="alert" [size]="14" />
+                    <span>{{ s.error }}</span>
+                  </p>
+                }
+
+                <div class="pf-slot__actions">
+                  @if (s.error && s.file) {
+                    <button type="button" class="pf-btn pf-btn--tiny" (click)="retry(format)">Réessayer</button>
+                  }
+                  @if (s.file || s.uploadedPath) {
+                    <button type="button" class="pf-btn pf-btn--tiny pf-btn--ghost" (click)="clearSlot(format)">
+                      <app-icon name="x" [size]="13" /> Retirer
+                    </button>
+                  }
+                  @if (s.existingUrl && !s.file) {
+                    <a class="pf-btn pf-btn--tiny pf-btn--ghost" [href]="s.existingUrl" target="_blank" rel="noopener">
+                      <app-icon name="external" [size]="13" /> Voir
+                    </a>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- --------------------------------------------------- footer --- -->
+        @if (submitError()) {
+          <p class="pf-submit-error" role="alert">
+            <app-icon name="alert" [size]="16" />
+            <span>{{ submitError() }}</span>
+          </p>
+        }
+
+        <footer class="pf-actions">
+          <a routerLink="/dashboard/procedures" class="pf-btn pf-btn--ghost">Annuler</a>
+          <button type="submit" class="pf-btn pf-btn--primary"
+                  [disabled]="isSubmitting() || isUploading()">
+            @if (isSubmitting()) {
+              <span class="pf-spinner pf-spinner--sm"></span> Enregistrement…
+            } @else {
+              <app-icon name="check" [size]="16" />
+              {{ isEditMode() ? 'Enregistrer les modifications' : 'Créer la procédure' }}
+            }
+          </button>
+        </footer>
+      </form>
+    }
+  </div>
+</div>

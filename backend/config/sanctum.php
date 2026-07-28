@@ -50,7 +50,9 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Tokens previously never expired (null). Default to an 8-hour working
+    // session; override per-environment with SANCTUM_EXPIRATION (minutes).
+    'expiration' => env('SANCTUM_EXPIRATION', 480),
 
     /*
     |--------------------------------------------------------------------------

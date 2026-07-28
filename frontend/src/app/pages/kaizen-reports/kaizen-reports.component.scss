@@ -11,3 +11,7 @@
     grid-template-columns: 1fr;
   }
 }
+
+@keyframes kh-spin {
+  to { transform: rotate(360deg); }
+}

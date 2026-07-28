@@ -8,11 +8,29 @@ export const STORE_KEYS = {
   hrRequests: 'kh_hr_requests',
   procedures: 'kh_procedures',
   kaizen: 'kh_kaizen',
+  notifications: 'kh_notifications',
 } as const;
 
-/** Read a JSON value; if absent, seed it and return the seed. */
+/**
+ * Read a JSON value; if absent, seed it and return the seed.
+ *
+ * Every `localStorage` access is guarded: the Storage API throws (not returns
+ * null) when storage is unavailable — blocked by browser privacy settings, or
+ * `QuotaExceededError` on write once the store grows. Previously those throws
+ * escaped synchronously out of the calling service *before* its `of(...)`
+ * observable was constructed, so `.subscribe({ error })` could never catch them
+ * and list components were left stuck on "Chargement..." forever. Degrading to
+ * the in-memory seed keeps the demo usable instead.
+ */
 export function lsRead<T>(key: string, seed: T): T {
-  const raw = localStorage.getItem(key);
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(key);
+  } catch (err) {
+    console.warn(`[local-store] lecture impossible pour "${key}" :`, err);
+    return seed;
+  }
+
   if (raw !== null) {
     try {
       return JSON.parse(raw) as T;
@@ -20,13 +38,17 @@ export function lsRead<T>(key: string, seed: T): T {
       /* corrupt value — fall through and re-seed */
     }
   }
-  localStorage.setItem(key, JSON.stringify(seed));
+  lsWrite(key, seed);
   return seed;
 }
 
-/** Overwrite a JSON value. */
+/** Overwrite a JSON value. Never throws — storage failures are logged, not fatal. */
 export function lsWrite<T>(key: string, value: T): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.warn(`[local-store] écriture impossible pour "${key}" :`, err);
+  }
 }
 
 /** Generate a short unique id. */

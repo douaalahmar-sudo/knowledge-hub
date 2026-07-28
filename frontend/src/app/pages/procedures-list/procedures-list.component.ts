@@ -3,6 +3,7 @@ import { ProcedureService } from '../../services/procedure.service';
 import { AuthService } from '../../services/auth.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs/operators';
 
 
 @Component(
@@ -44,13 +45,17 @@ export class ProceduresListComponent implements OnInit
     }
     fetchProcedures() : void
     {
-        this.procedureService.getProcedures().subscribe(
+        this.isLoading.set(true);
+        this.errorMessage.set(null);
+        // `finalize` guarantees the spinner clears on success, empty list, or error.
+        this.procedureService.getProcedures()
+        .pipe(finalize(() => this.isLoading.set(false)))
+        .subscribe(
         {
-            next: () => this.isLoading.set(false),
-            error: () =>
+            next: () => undefined,
+            error: (err) =>
             {
-                this.errorMessage.set('Impossible de charger les procédures.');
-                this.isLoading.set(false);
+                this.errorMessage.set(err?.error?.message || 'Impossible de charger les procédures.');
             }
         });
     }

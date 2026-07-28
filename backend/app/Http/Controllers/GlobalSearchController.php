@@ -57,7 +57,7 @@ class GlobalSearchController extends Controller
     {
         $query = Procedure::with('creator:id,name')
             ->where(function ($sub) use ($q) {
-                $sub->where('reference', 'like', "%{$q}%")
+                $sub->where('reference_code', 'like', "%{$q}%")
                     ->orWhere('name', 'like', "%{$q}%")
                     ->orWhere('module', 'like', "%{$q}%");
             });
@@ -67,7 +67,7 @@ class GlobalSearchController extends Controller
         return $query->latest()->limit(self::PER_ENTITY_LIMIT)->get()->map(fn ($p) => [
             'id'              => $p->id,
             'title'           => $p->name,
-            'description'     => 'Réf. ' . $p->reference . ' · ' . $p->module,
+            'description'     => 'Réf. ' . $p->reference_code . ' · ' . $p->module,
             'entity_type'     => 'PROCEDURE',
             'author'          => $p->creator?->name,
             'tenant_location' => $tenantLocation,

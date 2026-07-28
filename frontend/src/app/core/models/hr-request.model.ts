@@ -15,6 +15,7 @@ export interface HrRequest {
   id?: string | number;
   user_id?: number;
   user_name?: string;
+  tenant?: string;
   type: HrRequestType;
   title: string;
   description?: string | null;

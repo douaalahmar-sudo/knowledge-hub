@@ -1,8 +1,17 @@
 <div class="p-6 max-w-6xl mx-auto space-y-6">
-  <!-- Back Button -->
-  <a routerLink="/dashboard/knowledge-base" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600">
-    ← Retour aux articles
-  </a>
+  <!-- Back Button + Edit CTA -->
+  <div class="flex items-center justify-between">
+    <a routerLink="/dashboard/knowledge-base" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600">
+      ← Retour aux articles
+    </a>
+    <a
+      *ngIf="canEdit && article"
+      [routerLink]="['/dashboard/knowledge-base/edit', article.slug]"
+      class="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors">
+      <app-icon name="edit" [size]="15" />
+      Modifier l'article
+    </a>
+  </div>
 
   <!-- Loading -->
   <div *ngIf="isLoading" class="text-center py-16">

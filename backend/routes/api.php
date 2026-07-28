@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProcedureController;
 use App\Http\Controllers\ProcedureVersionController;
+use App\Http\Controllers\TriptychUploadController;
 use App\Http\Controllers\KaizenController;
 use App\Http\Controllers\HrRequestController;
 use App\Http\Controllers\ArticleController;
@@ -18,14 +19,32 @@ use App\Http\Middleware\ResolveTenantContext;
 */
 
 // ------------------- 1. Public Routes -------------------
+// Legacy unversioned paths, kept so any existing client keeps working.
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// Versioned auth surface (/api/v1/auth/*).
+Route::prefix('v1/auth')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']);
+
+    // Mock SSO — refuses to run outside local/testing (see AuthController::ssoMock).
+    Route::post('/sso/mock', [AuthController::class, 'ssoMock']);
+
+    // Authenticated auth endpoints. No ResolveTenantContext here: /me must stay
+    // reachable for a user whose tenant context is missing, otherwise clients
+    // can't introspect the session to find out why they're being rejected.
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me', [AuthController::class, 'me']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+    });
+});
 
 
 // ------------------- 2. Protected Routes -------------------
 // (Sanctum Session Guard + Tenant Context Resolution Active)
 Route::middleware(['auth:sanctum', ResolveTenantContext::class])->group(function () {
-    
+
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // --- GLOBAL SEARCH ENGINE (Module 3) ---
@@ -35,21 +54,30 @@ Route::middleware(['auth:sanctum', ResolveTenantContext::class])->group(function
 
     // --- KNOWLEDGE BASE / HR ARTICLES (Module 1) ---
     Route::prefix('v1')->group(function () {
+        // Reading is open to any authenticated user in the tenant.
         Route::get('/articles', [ArticleController::class, 'index']);
-        Route::post('/articles', [ArticleController::class, 'store']);
         Route::get('/articles/{article}', [ArticleController::class, 'show']);
-        Route::put('/articles/{article}', [ArticleController::class, 'update']);
+
+        // Authoring mirrors the Angular knowledge-base/new|edit route guard.
+        Route::post('/articles', [ArticleController::class, 'store'])
+            ->middleware('role:admin,hr_admin,expert_metier');
+        Route::put('/articles/{article}', [ArticleController::class, 'update'])
+            ->middleware('role:admin,hr_admin,expert_metier');
     });
 
     // --- HR SELF-SERVICE / EMPLOYEE SERVICES (Module 2) ---
     Route::prefix('v1')->group(function () {
-        // Employee endpoints
+        // Employee endpoints — any authenticated user manages their own requests.
         Route::get('/hr-requests/mine', [HrRequestController::class, 'userRequests']);
         Route::post('/hr-requests', [HrRequestController::class, 'store']);
 
-        // HR Admin endpoints
-        Route::get('/hr-requests', [HrRequestController::class, 'index']);
-        Route::put('/hr-requests/{id}', [HrRequestController::class, 'updateStatus']);
+        // HR Admin endpoints. These were previously reachable by ANY authenticated
+        // user — listing every employee's requests and approving/rejecting them
+        // were protected only by the frontend hiding the UI.
+        Route::get('/hr-requests', [HrRequestController::class, 'index'])
+            ->middleware('role:admin,hr_admin');
+        Route::put('/hr-requests/{id}', [HrRequestController::class, 'updateStatus'])
+            ->middleware('role:admin,hr_admin');
     });
 
     // --- PROCEDURES ENGINE (Protected by RBAC) ---
@@ -64,6 +92,24 @@ Route::middleware(['auth:sanctum', ResolveTenantContext::class])->group(function
         ->middleware('can:manage-procedures');
     Route::post('/procedures/{procedure}/versions', [ProcedureVersionController::class, 'store'])
         ->middleware('can:manage-procedures');
+
+    // --- TRIPTYCH SURFACE (/api/v1/procedures/*) ---
+    // The Angular triptych form + 3-tab viewer talk to these. The unversioned
+    // routes above stay put for existing clients.
+    Route::prefix('v1')->group(function () {
+        Route::post('/procedures/upload-triptych', [TriptychUploadController::class, 'store'])
+            ->middleware('can:manage-procedures');
+
+        Route::get('/procedures', [ProcedureController::class, 'index']);
+        Route::get('/procedures/{id}', [ProcedureController::class, 'show']);
+
+        Route::post('/procedures', [ProcedureController::class, 'store'])
+            ->middleware('can:manage-procedures');
+        Route::patch('/procedures/{id}', [ProcedureController::class, 'updateMeta'])
+            ->middleware('can:manage-procedures');
+        Route::delete('/procedures/{id}', [ProcedureController::class, 'destroy'])
+            ->middleware('can:manage-procedures');
+    });
 
     // --- WORKFLOW STEPS ENGINE ---
     Route::apiResource('workflow-etapes', EtapeWorkflowController::class);
