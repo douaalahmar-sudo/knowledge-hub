@@ -1,5 +1,8 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 /**
  * Demo roles used across the frontend-only build.
@@ -18,33 +21,10 @@ export type DemoRole =
   | 'hr_admin'
   | 'hr_user';
 
-interface DemoAccount {
-  id: number;
-  name: string;
-  email: string;
-  password: string;
-  role: DemoRole;
-  tenant: { name: string; plan: string };
-}
-
+// Real credential checking now happens server-side (POST /v1/auth/login).
+// This tenant object is only still needed as the placeholder tenant register()
+// assigns to a brand-new local-only signup session.
 const STORE_TENANT = { name: 'FLESK Store #101 - Tunis', plan: 'premium' };
-// `responsable_departement` is seeded tenant-agnostic (HQ), matching the backend
-// choice — see DatabaseSeeder.php. This is cosmetic here since the frontend mock
-// stores don't actually filter by tenant, but it keeps the two layers consistent.
-const HQ_TENANT = { name: 'FLESK HQ & Services Centraux', plan: 'premium' };
-
-/** Hard-coded demo credentials — no backend required. Password for all: password123 */
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  { id: 1, name: 'Sami Ben Ali',    email: 'admin@flesk.com',        password: 'password123', role: 'admin',                   tenant: STORE_TENANT },
-  { id: 2, name: 'Amina Mansour',   email: 'owner@flesk.com',        password: 'password123', role: 'process_owner',           tenant: STORE_TENANT },
-  { id: 3, name: 'Nizar Haddad',    email: 'expert@flesk.com',       password: 'password123', role: 'expert_metier',           tenant: STORE_TENANT },
-  { id: 4, name: 'Rania Sassi',     email: 'dept.manager@flesk.com', password: 'password123', role: 'responsable_departement', tenant: HQ_TENANT },
-  { id: 5, name: 'Leila Trabelsi',  email: 'validator@flesk.com',    password: 'password123', role: 'validator',               tenant: STORE_TENANT },
-  { id: 6, name: 'Karim Bouazizi',  email: 'manager@flesk.com',      password: 'password123', role: 'manager',                 tenant: STORE_TENANT },
-  { id: 7, name: 'Karim Zouari',    email: 'operator@flesk.com',     password: 'password123', role: 'operator',                tenant: STORE_TENANT },
-  { id: 8, name: 'Fatma Gharbi',    email: 'hr.admin@flesk.com',     password: 'password123', role: 'hr_admin',                tenant: STORE_TENANT },
-  { id: 9, name: 'Youssef Nasri',   email: 'hr.user@flesk.com',      password: 'password123', role: 'hr_user',                 tenant: STORE_TENANT },
-];
 
 /** Display labels for the sidebar/user-footer (role keys stay snake_case internally). */
 export const ROLE_LABELS: Record<DemoRole, string> = {
@@ -87,6 +67,8 @@ export const ROLE_GROUPS: Record<PermissionGroup, DemoRole[]> = {
   providedIn: 'root'
 })
 export class AuthService {
+  private http = inject(HttpClient);
+
   // Global reactive session state (restored from localStorage on startup).
   currentUser = signal<any>(this.readUser());
   currentTenant = signal<any>(this.readUser()?.tenant ?? null);
@@ -116,15 +98,32 @@ export class AuthService {
     }
   }
 
-  /** Local credential lookup — returns { user, token } or errors. */
+  /**
+   * Authenticates against the real Laravel backend (POST /v1/auth/login) and
+   * establishes a session from the Sanctum token it returns.
+   *
+   * This used to be a purely local lookup against a hardcoded account list —
+   * no backend involved. The 9 demo accounts are seeded server-side with the
+   * exact same emails/passwords (see backend/database/seeders/DatabaseSeeder.php),
+   * so existing demo logins keep working, but every subsequent request now
+   * carries a real Sanctum bearer token instead of a fake `demo-token-<ts>`
+   * that the API would reject with 401.
+   */
   login(credentials: { email: string; password: string }): Observable<any> {
     const email = (credentials?.email || '').trim().toLowerCase();
-    const match = DEMO_ACCOUNTS.find(a => a.email === email && a.password === credentials?.password);
 
-    if (!match) {
-      return throwError(() => ({ error: { message: 'Identifiants invalides. (Astuce : mot de passe = password123)' } }));
-    }
-    return of(this.establishSession(match));
+    return this.http
+      .post<any>(`${environment.apiUrl}/v1/auth/login`, { email, password: credentials?.password })
+      .pipe(
+        map(response => this.establishApiSession(response)),
+        catchError((err: HttpErrorResponse) => {
+          const message =
+            err.status === 0
+              ? 'Serveur injoignable. Vérifiez que l’API est bien démarrée.'
+              : err.error?.message || 'Identifiants invalides.';
+          return throwError(() => ({ error: { message } }));
+        })
+      );
   }
 
   /**
@@ -176,6 +175,7 @@ export class AuthService {
     return ROLE_GROUPS[group].includes(r);
   }
 
+  /** Local, no-backend session — still used by register()'s walk-up signup. */
   private establishSession(account: { id: number; name: string; email: string; role: DemoRole; tenant: any }): any {
     const user = {
       id: account.id,
@@ -194,5 +194,33 @@ export class AuthService {
     this.currentTenant.set(user.tenant);
 
     return { user, token, tenant: user.tenant };
+  }
+
+  /**
+   * Real-backend session — maps AuthController::tokenPayload()'s shape
+   * ({ access_token, user: { ...role: {name}, tenant: {...} }, tenant }) onto
+   * the same flat { id, name, email, role: string, tenant } shape the rest of
+   * the app (canAccess, inGroup, sidebar, tenant banner…) already expects.
+   */
+  private establishApiSession(payload: { access_token: string; user: any; tenant: any }): any {
+    const roleName: string | null = payload.user?.role?.name ?? null;
+    const tenant = payload.tenant ?? payload.user?.tenant ?? null;
+
+    const user = {
+      id: payload.user.id,
+      name: payload.user.name,
+      email: payload.user.email,
+      role: roleName,
+      tenant,
+    };
+
+    localStorage.setItem('auth_token', payload.access_token);
+    localStorage.setItem('current_user', JSON.stringify(user));
+
+    this.token.set(payload.access_token);
+    this.currentUser.set(user);
+    this.currentTenant.set(tenant);
+
+    return { user, token: payload.access_token, tenant };
   }
 }
