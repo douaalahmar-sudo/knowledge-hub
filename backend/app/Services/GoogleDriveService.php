@@ -87,6 +87,17 @@ class GoogleDriveService
         return $response->getBody()->getContents();
     }
 
+    /**
+     * The MIME type Drive stored for this file at upload time — the source of
+     * truth for what it actually is, since a slot like "infographie" accepts
+     * several real image types and nothing else records which one a given
+     * file was.
+     */
+    public function getMimeType(string $fileId): ?string
+    {
+        return $this->drive->files->get($fileId, ['fields' => 'mimeType'])->getMimeType();
+    }
+
     public function delete(string $fileId): void
     {
         $this->drive->files->delete($fileId);

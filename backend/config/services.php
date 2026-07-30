@@ -54,6 +54,11 @@ return [
         'oauth_client_id' => env('GOOGLE_DRIVE_OAUTH_CLIENT_ID'),
         'oauth_client_secret' => env('GOOGLE_DRIVE_OAUTH_CLIENT_SECRET'),
         'oauth_refresh_token' => env('GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN'),
+
+        // Destination folder for article pdf/infographie/video uploads
+        // (ArticleController::uploadFile). In service_account mode this must
+        // be a folder inside a Shared Drive the service account belongs to.
+        'articles_folder_id' => env('GOOGLE_DRIVE_ARTICLES_FOLDER_ID'),
     ],
 
 ];

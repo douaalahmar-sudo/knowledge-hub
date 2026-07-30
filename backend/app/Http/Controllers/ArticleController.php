@@ -3,22 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ArticleCriticite;
+use App\Enums\ArticleFileFormat;
 use App\Enums\ArticleStatus;
 use App\Enums\UserRole;
 use App\Http\Requests\RejectArticleRequest;
 use App\Http\Requests\StoreArticleRequest;
 use App\Http\Requests\UpdateArticleRequest;
+use App\Http\Requests\UploadArticleFileRequest;
 use App\Models\Article;
+use App\Services\GoogleDriveService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use RuntimeException;
+use Throwable;
 
 /**
- * CRUD plus the workflow transitions (submit/validate-metier/validate-qualite/
- * reject). No Drive file uploads yet — that's a separate task.
+ * CRUD, the workflow transitions (submit/validate-metier/validate-qualite/
+ * reject), and the three Drive-backed file slots (pdf/infographie/video).
  */
 class ArticleController extends Controller
 {
@@ -177,6 +183,74 @@ class ArticleController extends Controller
         $article->save();
 
         return response()->json($article->load('author:id,name,email'), 200);
+    }
+
+    /**
+     * Author-and-draft-only (identical to update()'s restriction, enforced in
+     * UploadArticleFileRequest) — overwrites whatever was already in that slot.
+     * The old Drive file is deleted best-effort afterwards so superseded
+     * uploads don't just accumulate there, same convention as
+     * TriptychUploadController; a failure to delete it doesn't fail the
+     * request, since the new upload has already succeeded and is already saved.
+     */
+    public function uploadFile(UploadArticleFileRequest $request, Article $article, string $format, GoogleDriveService $drive): JsonResponse
+    {
+        $folderId = config('services.google_drive.articles_folder_id');
+
+        if (! $folderId) {
+            throw new RuntimeException('GOOGLE_DRIVE_ARTICLES_FOLDER_ID is not configured.');
+        }
+
+        $column = ArticleFileFormat::from($format)->column();
+        $previousFileId = $article->{$column};
+
+        $article->{$column} = $drive->upload($request->file('file'), $folderId);
+        $article->save();
+
+        if ($previousFileId) {
+            try {
+                $drive->delete($previousFileId);
+            } catch (Throwable) {
+                // Best-effort cleanup only — see docblock above.
+            }
+        }
+
+        return response()->json($article->fresh()->load('author:id,name,email'), 200);
+    }
+
+    /**
+     * Same visibility rule as show(): a lecteur gets a 404 rather than the
+     * file itself unless the article is published and the active version.
+     * Content-Type comes from Drive's own stored metadata, not a guess based
+     * on $format alone — "infographie" covers several real image types, and
+     * nothing else records which one a given file actually is.
+     * Content-Disposition is always inline, never attachment: no download
+     * prompt, per spec §10.2.
+     */
+    public function retrieveFile(Request $request, Article $article, string $format, GoogleDriveService $drive): Response
+    {
+        $fileFormat = ArticleFileFormat::tryFrom($format);
+
+        if (! $fileFormat) {
+            abort(422, "Format de fichier inconnu : « {$format} ». Valeurs acceptées : pdf, infographie, video.");
+        }
+
+        if ($request->user()->hasRole(UserRole::Lecteur) && ! $this->isPublishedActive($article)) {
+            abort(404);
+        }
+
+        $fileId = $article->{$fileFormat->column()};
+
+        if (! $fileId) {
+            abort(404, "Aucun fichier « {$fileFormat->label()} » n'a été téléversé pour cet article.");
+        }
+
+        $content = $drive->streamFile($fileId);
+        $mimeType = $drive->getMimeType($fileId) ?? $fileFormat->fallbackMimeType();
+
+        return response($content)
+            ->header('Content-Type', $mimeType)
+            ->header('Content-Disposition', 'inline');
     }
 
     /**

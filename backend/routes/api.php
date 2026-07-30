@@ -72,6 +72,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/articles/{article}/validate-metier', [ArticleController::class, 'validateMetier']);
         Route::post('/articles/{article}/validate-qualite', [ArticleController::class, 'validateQualite']);
         Route::post('/articles/{article}/reject', [ArticleController::class, 'reject']);
+
+        // {format} is deliberately unconstrained here (no ->where()): an
+        // invalid value should reach the controller and get a controlled 422,
+        // not Laravel's raw 404 for a route that simply didn't match.
+        Route::post('/articles/{article}/files/{format}', [ArticleController::class, 'uploadFile']);
+        Route::get('/articles/{article}/files/{format}', [ArticleController::class, 'retrieveFile']);
     });
 
     // --- HR SELF-SERVICE / EMPLOYEE SERVICES (Module 2) ---
