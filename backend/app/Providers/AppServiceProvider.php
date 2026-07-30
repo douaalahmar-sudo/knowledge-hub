@@ -41,5 +41,17 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('create-articles', function (User $user) {
             return $user->hasRole(['redacteur', 'admin']);
         });
+
+        // 6/7. Article workflow validation stages — enforced in
+        // ArticleController::validateMetier()/validateQualite(), and reused by
+        // reject() to decide which role may reject at the article's current
+        // stage (see RejectArticleRequest).
+        Gate::define('validate-metier', function (User $user) {
+            return $user->hasRole(['responsable_departement', 'admin']);
+        });
+
+        Gate::define('validate-qualite', function (User $user) {
+            return $user->hasRole(['qualite', 'admin']);
+        });
     }
 }

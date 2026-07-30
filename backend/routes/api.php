@@ -64,6 +64,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/articles', [ArticleController::class, 'store']);
         Route::put('/articles/{article}', [ArticleController::class, 'update']);
         Route::delete('/articles/{article}', [ArticleController::class, 'destroy']);
+
+        // Workflow: draft -> pending_metier -> pending_qualite -> published,
+        // reject sends either pending_* stage back to draft. Role gating for
+        // each lives in the controller/RejectArticleRequest, not here.
+        Route::post('/articles/{article}/submit', [ArticleController::class, 'submit']);
+        Route::post('/articles/{article}/validate-metier', [ArticleController::class, 'validateMetier']);
+        Route::post('/articles/{article}/validate-qualite', [ArticleController::class, 'validateQualite']);
+        Route::post('/articles/{article}/reject', [ArticleController::class, 'reject']);
     });
 
     // --- HR SELF-SERVICE / EMPLOYEE SERVICES (Module 2) ---

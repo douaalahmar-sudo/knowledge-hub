@@ -5,19 +5,20 @@ namespace App\Http\Controllers;
 use App\Enums\ArticleCriticite;
 use App\Enums\ArticleStatus;
 use App\Enums\UserRole;
+use App\Http\Requests\RejectArticleRequest;
 use App\Http\Requests\StoreArticleRequest;
 use App\Http\Requests\UpdateArticleRequest;
 use App\Models\Article;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 /**
- * CRUD only — no status-transition endpoints (submit/validate-metier/
- * validate-qualite/archive) and no Drive file uploads yet. Both are separate
- * tasks layered on top of this.
+ * CRUD plus the workflow transitions (submit/validate-metier/validate-qualite/
+ * reject). No Drive file uploads yet — that's a separate task.
  */
 class ArticleController extends Controller
 {
@@ -99,6 +100,123 @@ class ArticleController extends Controller
         return response()->json([
             'message' => 'Les articles ne sont pas supprimés directement : ils sont archivés via le workflow de validation.',
         ], 403);
+    }
+
+    /**
+     * draft -> pending_metier. Only the author may submit their own article;
+     * canTransitionTo() is still checked afterwards so a non-draft article
+     * gets a specific "wrong state" message rather than silently succeeding.
+     */
+    public function submit(Request $request, Article $article): JsonResponse
+    {
+        if ($article->author_id !== $request->user()->id) {
+            abort(403, 'Seul l\'auteur peut soumettre cet article pour validation.');
+        }
+
+        $this->assertCanTransition($article, ArticleStatus::PendingMetier);
+
+        $article->status = ArticleStatus::PendingMetier;
+        $article->save();
+
+        return response()->json($article->load('author:id,name,email'), 200);
+    }
+
+    /**
+     * pending_metier -> pending_qualite.
+     */
+    public function validateMetier(Request $request, Article $article): JsonResponse
+    {
+        Gate::authorize('validate-metier');
+
+        $this->assertCanTransition($article, ArticleStatus::PendingQualite);
+
+        $article->status = ArticleStatus::PendingQualite;
+        $article->validated_by_metier_id = $request->user()->id;
+        $article->save();
+
+        return response()->json($article->load('author:id,name,email'), 200);
+    }
+
+    /**
+     * pending_qualite -> published. Also retires whichever article is
+     * currently the active version of this one's lineage (the "Zéro Doublon"
+     * replacement: the old version becomes archived and invisible to
+     * lecteurs, but the row — and its own validation history — stays intact).
+     */
+    public function validateQualite(Request $request, Article $article): JsonResponse
+    {
+        Gate::authorize('validate-qualite');
+
+        $this->assertCanTransition($article, ArticleStatus::Published);
+
+        DB::transaction(function () use ($article, $request) {
+            $this->archivePreviousActiveVersion($article);
+
+            $article->status = ArticleStatus::Published;
+            $article->validated_by_qualite_id = $request->user()->id;
+            $article->published_at = now();
+            $article->is_active_version = true;
+            $article->save();
+        });
+
+        return response()->json($article->fresh()->load('author:id,name,email'), 200);
+    }
+
+    /**
+     * pending_metier -> draft, or pending_qualite -> draft. Not a
+     * canTransitionTo() move — the enum's chain is strictly forward, and a
+     * rejection is deliberately the one path that isn't. Which role may do
+     * this depends on which stage the article is currently sitting at; see
+     * RejectArticleRequest for that state-dependent gate selection and the
+     * `reason` field (accepted, not yet persisted — a future
+     * alerts/notifications task).
+     */
+    public function reject(RejectArticleRequest $request, Article $article): JsonResponse
+    {
+        $article->status = ArticleStatus::Draft;
+        $article->save();
+
+        return response()->json($article->load('author:id,name,email'), 200);
+    }
+
+    /**
+     * Belt-and-suspenders check shared by every transition endpoint: the role
+     * gate should already rule out calling this from the wrong state, but if
+     * it somehow doesn't, this turns that into a specific message instead of
+     * a confusing silent no-op or an unrelated database error.
+     */
+    private function assertCanTransition(Article $article, ArticleStatus $target): void
+    {
+        if (! $article->status->canTransitionTo($target)) {
+            abort(422, "Transition invalide : impossible de passer de « {$article->status->label()} » à « {$target->label()} ».");
+        }
+    }
+
+    /**
+     * The article superseded by $article, if any — either $article's direct
+     * parent, or a sibling sharing that same parent_article_id (every version
+     * of a lineage points at the same root, per the "Zéro Doublon" model).
+     * A brand-new, never-versioned article has no parent_article_id and
+     * nothing to archive here.
+     */
+    private function archivePreviousActiveVersion(Article $article): void
+    {
+        $rootId = $article->parent_article_id;
+
+        if (! $rootId) {
+            return;
+        }
+
+        Article::where('is_active_version', true)
+            ->where('id', '!=', $article->id)
+            ->where(function (Builder $query) use ($rootId) {
+                $query->where('id', $rootId)
+                    ->orWhere('parent_article_id', $rootId);
+            })
+            ->update([
+                'is_active_version' => false,
+                'status' => ArticleStatus::Archived->value,
+            ]);
     }
 
     /**
