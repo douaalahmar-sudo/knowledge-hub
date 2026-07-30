@@ -19,7 +19,7 @@ class ProcedureVersionController extends Controller
 
         return response()->json([
             'message' => 'Version importée et mise en file de traitement.',
-            'data' => $version->load(['procedure', 'tenant']),
+            'data' => $version->load(['procedure', 'filiale']),
         ], 201);
     }
 }

@@ -10,7 +10,7 @@ class HrRequestController extends Controller
 {
     /**
      * Employee view: requests submitted by the currently authenticated user.
-     * (Tenant scoping is applied automatically by the BelongsToTenant trait.)
+     * (Filiale scoping is applied by the PostgreSQL RLS policy on `hr_requests`.)
      */
     public function userRequests(Request $request): JsonResponse
     {
@@ -23,7 +23,7 @@ class HrRequestController extends Controller
     }
 
     /**
-     * HR Admin view: every request across the current tenant/store.
+     * HR Admin view: every request across the caller's filiale (RLS-scoped).
      */
     public function index(): JsonResponse
     {
@@ -54,7 +54,7 @@ class HrRequestController extends Controller
         // Store each attachment on the public disk and keep its URL.
         $attachmentUrls = [];
         if ($request->hasFile('attachments')) {
-            $folder = 'hr-requests/' . $request->user()->tenant_id . '/' . $request->user()->id;
+            $folder = 'hr-requests/' . $request->user()->filiale_id . '/' . $request->user()->id;
             foreach ($request->file('attachments') as $file) {
                 $path = $file->store($folder, 'public');
                 $attachmentUrls[] = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
@@ -70,7 +70,9 @@ class HrRequestController extends Controller
             'end_date'    => $validated['end_date'] ?? null,
             'attachments' => $attachmentUrls,
             'status'      => 'PENDING',
-            // tenant_id is auto-filled by the BelongsToTenant trait.
+            // Set explicitly now that there is no global scope doing it — the
+            // RLS WITH CHECK clause rejects a mismatched or missing filiale.
+            'filiale_id'  => $request->user()->filiale_id,
         ]);
 
         return response()->json($hrRequest->load('user:id,name'), 201);
@@ -96,7 +98,7 @@ class HrRequestController extends Controller
         ]);
 
         if ($request->hasFile('pdf')) {
-            $folder = 'hr-requests/' . $hrRequest->tenant_id . '/' . $hrRequest->user_id . '/generated';
+            $folder = 'hr-requests/' . $hrRequest->filiale_id . '/' . $hrRequest->user_id . '/generated';
             $hrRequest->pdf_path = $request->file('pdf')->store($folder, 'public');
         }
 

@@ -10,7 +10,10 @@ use Illuminate\Http\JsonResponse;
 class PersonnelController extends Controller
 {
     /**
-     * List all personnel/users scoped to the active tenant.
+     * List all personnel/users in the caller's filiale.
+     *
+     * No `where` clause needed: the RLS policy on `users` scopes the result to
+     * the filiale SetTenantContext published for this request.
      */
     public function index(Request $request): JsonResponse
     {
@@ -23,7 +26,7 @@ class PersonnelController extends Controller
     }
 
     /**
-     * Create a new personnel entry under the current tenant.
+     * Create a new personnel entry under the caller's filiale.
      */
     public function store(Request $request): JsonResponse
     {
@@ -35,6 +38,11 @@ class PersonnelController extends Controller
         ]);
 
         $validated['password'] = bcrypt($validated['password']);
+
+        // New personnel join the creator's filiale. Required, not merely tidy:
+        // the RLS policy on `users` rejects an insert whose filiale_id does not
+        // match the filiale this session is acting as.
+        $validated['filiale_id'] = $request->user()->filiale_id;
 
         $user = User::create($validated);
 
@@ -77,7 +85,7 @@ class PersonnelController extends Controller
     }
 
     /**
-     * Remove personnel member from the tenant directory.
+     * Remove personnel member from the filiale directory.
      */
     public function destroy(User $personnel): JsonResponse
     {

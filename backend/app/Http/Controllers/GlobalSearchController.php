@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Article;
+use App\Models\Filiale;
 use App\Models\HrRequest;
 use App\Models\KaizenReport;
 use App\Models\Procedure;
-use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -19,8 +19,9 @@ class GlobalSearchController extends Controller
      * Unified cross-entity search.
      *
      * Query params: q (required), type (optional single entity filter),
-     * author_id, date_from, date_to. All entity queries are tenant-scoped
-     * automatically via the BelongsToTenant global scope.
+     * author_id, date_from, date_to. None of the queries below filter by
+     * filiale: the PostgreSQL RLS policies already restrict every one of these
+     * tables to the filiale published by SetTenantContext.
      */
     public function search(Request $request): JsonResponse
     {
@@ -35,8 +36,8 @@ class GlobalSearchController extends Controller
         $q = trim($validated['q']);
         $type = $validated['type'] ?? null;
 
-        // All results belong to the current tenant — resolve its name once.
-        $tenantLocation = optional(Tenant::find($request->user()->tenant_id))->name;
+        // All results belong to the caller's filiale — resolve its name once.
+        $tenantLocation = optional(Filiale::find($request->user()->filiale_id))->name;
 
         $results = [
             'procedures'  => $this->wants($type, 'procedures') ? $this->searchProcedures($q, $request, $tenantLocation) : [],

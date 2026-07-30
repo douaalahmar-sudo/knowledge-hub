@@ -2,15 +2,12 @@
 
 namespace App\Models;
 
-use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class QuizResult extends Model
 {
-    use BelongsToTenant;
-
-    protected $fillable = ['tenant_id', 'user_id', 'procedure_id', 'score', 'passed'];
+    protected $fillable = ['filiale_id', 'user_id', 'procedure_id', 'score', 'passed'];
 
     protected $casts = [
         'passed' => 'boolean',
@@ -27,8 +24,8 @@ class QuizResult extends Model
         return $this->belongsTo(Procedure::class);
     }
 
-    public function tenant(): BelongsTo
+    public function filiale(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Filiale::class);
     }
 }

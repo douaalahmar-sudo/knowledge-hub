@@ -18,7 +18,7 @@ class User extends Authenticatable
         'matricule',
         'store_id',
         'role_id',
-        'tenant_id',
+        'filiale_id',
     ];
 
     /**
@@ -30,10 +30,13 @@ class User extends Authenticatable
     }
 
     /**
-     * Relationship: User belongs to a Tenant/store.
+     * Relationship: User belongs to a Filiale.
+     *
+     * The filiale also drives PostgreSQL Row-Level Security — see
+     * App\Http\Middleware\SetTenantContext.
      */
-    public function tenant()
+    public function filiale()
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Filiale::class);
     }
 }

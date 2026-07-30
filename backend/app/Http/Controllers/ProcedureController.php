@@ -13,7 +13,7 @@ class ProcedureController extends Controller
     // 1. Get all procedures along with their active version details
     public function index()
     {
-        $procedures = Procedure::with(['currentVersion', 'creator:id,name', 'tenant:id,name'])->get();
+        $procedures = Procedure::with(['currentVersion', 'creator:id,name', 'filiale:id,name'])->get();
         return response()->json($procedures, 200);
     }
 
@@ -39,7 +39,7 @@ class ProcedureController extends Controller
 
         $procedure = DB::transaction(function () use ($validated, $request) {
             return Procedure::create(array_merge($validated, [
-                'tenant_id' => $request->user()->tenant_id,
+                'filiale_id' => $request->user()->filiale_id,
                 'created_by' => $request->user()->id,
                 'status' => $validated['status'] ?? 'En attente',
                 'version' => $validated['version'] ?? '1.0',
@@ -121,7 +121,7 @@ class ProcedureController extends Controller
             }
 
             $newVersion = ProcedureVersion::create([
-                'tenant_id' => $procedure->tenant_id,
+                'filiale_id' => $procedure->filiale_id,
                 'procedure_id' => $procedure->id,
                 'version_number' => ($latestVersionNumber ?? 0) + 1,
                 'pdf_url' => $fields['pdf_url'],

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,10 +9,10 @@ use Illuminate\Support\Facades\Storage;
 
 class HrRequest extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use HasFactory;
 
     protected $fillable = [
-        'tenant_id',
+        'filiale_id',
         'user_id',
         'type',
         'title',
@@ -41,6 +40,14 @@ class HrRequest extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The owning filiale.
+     */
+    public function filiale(): BelongsTo
+    {
+        return $this->belongsTo(Filiale::class);
     }
 
     /**

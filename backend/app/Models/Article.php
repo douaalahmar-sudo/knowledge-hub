@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,14 +10,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Article extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes, BelongsToTenant;
+    use HasFactory, HasUuids, SoftDeletes;
 
     // UUID primary key (see the create_articles_table migration).
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
-        'tenant_id',
+        'filiale_id',
         'author_id',
         'title',
         'slug',
@@ -53,5 +52,14 @@ class Article extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    /**
+     * Owning filiale. Reads are already constrained by the RLS policy on this
+     * table; the relation exists for writes and for eager loading.
+     */
+    public function filiale(): BelongsTo
+    {
+        return $this->belongsTo(Filiale::class);
     }
 }

@@ -2,15 +2,12 @@
 
 namespace App\Models;
 
-use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Embedding extends Model
 {
-    use BelongsToTenant;
-
-    protected $fillable = ['tenant_id', 'procedure_version_id', 'chunk_text', 'chunk_index', 'embedding'];
+    protected $fillable = ['filiale_id', 'procedure_version_id', 'chunk_text', 'chunk_index', 'embedding'];
 
     // We don't need timestamps for embeddings if we didn't add them in the migration
     public $timestamps = false; 
@@ -20,9 +17,9 @@ class Embedding extends Model
         return $this->belongsTo(ProcedureVersion::class, 'procedure_version_id');
     }
 
-    public function tenant(): BelongsTo
+    public function filiale(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Filiale::class);
     }
 }
 

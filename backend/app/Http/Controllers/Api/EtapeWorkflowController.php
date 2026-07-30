@@ -10,11 +10,12 @@ use Illuminate\Http\JsonResponse;
 class EtapeWorkflowController extends Controller
 {
     /**
-     * Get all workflow steps for the authenticated user's tenant.
+     * Get all workflow steps for the authenticated user's filiale.
      */
     public function index(Request $request): JsonResponse
     {
-        // Tenant scope is automatically applied by BelongsToTenant trait
+        // Scoping comes from the RLS policy on the underlying table — add it to
+        // the RLS migration's STRICT_TABLES list when this table gains filiale_id.
         $steps = EtapeWorkflow::with(['procedure', 'assignedUser'])->latest()->get();
 
         return response()->json([

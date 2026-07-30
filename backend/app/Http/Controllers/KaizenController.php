@@ -120,7 +120,7 @@ class KaizenController extends Controller
                 'version'          => $nextVersion,
                 'status'           => 'published',
                 'process_owner_id' => $oldProcedure->process_owner_id,
-                'tenant_id'        => $oldProcedure->tenant_id,
+                'filiale_id'       => $oldProcedure->filiale_id,
             ]);
 
             return response()->json([

@@ -94,8 +94,9 @@ class TriptychUploadController extends Controller
             ]);
         }
 
-        // Resolved through the model so the tenant global scope applies: a user
-        // cannot attach assets to another tenant's procedure.
+        // Resolved through the model, so the RLS policy on `procedures` applies:
+        // a procedure from another filiale simply does not exist for this
+        // session, and the lookup 404s instead of attaching the asset.
         $procedure = isset($validated['procedure_id'])
             ? Procedure::find($validated['procedure_id'])
             : null;

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Tenant;
+use App\Models\Filiale;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,12 +16,12 @@ class ApiEndpointTest extends TestCase
      */
     public function test_user_can_login_and_receive_token(): void
     {
-        $tenant = Tenant::create(['name' => 'Test Tenant']);
+        $filiale = Filiale::create(['name' => 'Test Filiale']);
         $user = User::factory()->create([
             'email'     => 'test@flesk.com',
             'matricule' => 'TST-001',
             'password'  => bcrypt('password123'),
-            'tenant_id' => $tenant->id,
+            'filiale_id' => $filiale->id,
         ]);
 
         $response = $this->postJson('/api/login', [
@@ -47,10 +47,10 @@ class ApiEndpointTest extends TestCase
      */
     public function test_authenticated_user_can_access_business_domain_routes(): void
     {
-        $tenant = Tenant::create(['name' => 'Test Tenant']);
+        $filiale = Filiale::create(['name' => 'Test Filiale']);
         $user = User::factory()->create([
             'matricule' => 'TST-002',
-            'tenant_id' => $tenant->id,
+            'filiale_id' => $filiale->id,
         ]);
 
         $response = $this->actingAs($user, 'sanctum')

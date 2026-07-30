@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Procedure;
 use App\Models\Role;
-use App\Models\Tenant;
+use App\Models\Filiale;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -20,21 +20,21 @@ class ProcedureV1ApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Tenant $tenant;
+    private Filiale $filiale;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         Storage::fake('public');
-        $this->tenant = Tenant::create(['name' => 'Store 101']);
+        $this->filiale = Filiale::create(['name' => 'Store 101']);
     }
 
     private function user(string $role): User
     {
         return User::factory()->create([
             'matricule' => strtoupper(substr($role, 0, 3)).'-'.fake()->unique()->numberBetween(1000, 9999),
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'role_id' => Role::firstOrCreate(['name' => $role])->id,
         ]);
     }
@@ -71,7 +71,7 @@ class ProcedureV1ApiTest extends TestCase
         $owner = $this->user('process_owner');
 
         $procedure = Procedure::create([
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'created_by' => $owner->id,
             'reference_code' => 'SOP-PR-002',
             'name' => 'Réception marchandises',
@@ -102,7 +102,7 @@ class ProcedureV1ApiTest extends TestCase
         $owner = $this->user('process_owner');
 
         $procedure = Procedure::create([
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'created_by' => $owner->id,
             'reference_code' => 'SOP-PR-003',
             'name' => 'Ancien titre',
@@ -126,7 +126,7 @@ class ProcedureV1ApiTest extends TestCase
         $owner = $this->user('process_owner');
 
         $procedure = Procedure::create([
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'created_by' => $owner->id,
             'reference_code' => 'SOP-PR-004',
             'name' => 'Inventaire',
@@ -149,7 +149,7 @@ class ProcedureV1ApiTest extends TestCase
         $owner = $this->user('process_owner');
 
         Procedure::create([
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'created_by' => $owner->id,
             'reference_code' => 'SOP-PR-005',
             'name' => 'Existante',
@@ -157,7 +157,7 @@ class ProcedureV1ApiTest extends TestCase
         ]);
 
         $other = Procedure::create([
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'created_by' => $owner->id,
             'reference_code' => 'SOP-PR-006',
             'name' => 'Autre',

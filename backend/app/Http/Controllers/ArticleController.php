@@ -16,7 +16,7 @@ class ArticleController extends Controller
 
     /**
      * List articles with optional category / search / status filters.
-     * (Tenant scoping is applied automatically by the BelongsToTenant trait.)
+     * (Filiale scoping is applied by the PostgreSQL RLS policy on `articles`.)
      */
     public function index(Request $request): JsonResponse
     {
@@ -84,7 +84,10 @@ class ArticleController extends Controller
             'cover_image_url'      => $this->resolveCover($request, $validated['cover_image_url'] ?? null),
             'attachments'          => $this->storeAttachments($request),
             'reading_time_minutes' => $this->readingTime($validated['content']),
-            // tenant_id is auto-filled by the BelongsToTenant trait.
+            // Set explicitly now that there is no global scope doing it: the RLS
+            // policy's WITH CHECK clause rejects an insert whose filiale_id does
+            // not match the session's filiale, so a missing value fails loudly.
+            'filiale_id'           => $request->user()->filiale_id,
         ]);
 
         return response()->json($article->load('author:id,name,email'), 201);
@@ -170,7 +173,7 @@ class ArticleController extends Controller
     {
         if ($request->hasFile('cover_image')) {
             $path = $request->file('cover_image')->store(
-                'articles/' . $request->user()->tenant_id . '/covers',
+                'articles/' . $request->user()->filiale_id . '/covers',
                 'public'
             );
             return Storage::disk('public')->url($path);
@@ -187,7 +190,7 @@ class ArticleController extends Controller
             return [];
         }
 
-        $folder = 'articles/' . $request->user()->tenant_id . '/attachments';
+        $folder = 'articles/' . $request->user()->filiale_id . '/attachments';
 
         return collect($request->file('attachments'))
             ->map(function (UploadedFile $file) use ($folder) {

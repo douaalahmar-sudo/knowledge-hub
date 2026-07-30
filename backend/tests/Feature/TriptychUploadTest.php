@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Procedure;
 use App\Models\Role;
-use App\Models\Tenant;
+use App\Models\Filiale;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -17,14 +17,14 @@ class TriptychUploadTest extends TestCase
 
     private const ENDPOINT = '/api/v1/procedures/upload-triptych';
 
-    private Tenant $tenant;
+    private Filiale $filiale;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         Storage::fake('public');
-        $this->tenant = Tenant::create(['name' => 'Store 101']);
+        $this->filiale = Filiale::create(['name' => 'Store 101']);
     }
 
     private function processOwner(): User
@@ -33,7 +33,7 @@ class TriptychUploadTest extends TestCase
 
         return User::factory()->create([
             'matricule' => 'PO-'.fake()->unique()->numberBetween(1000, 9999),
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'role_id' => $role->id,
         ]);
     }
@@ -41,7 +41,7 @@ class TriptychUploadTest extends TestCase
     private function procedure(User $owner): Procedure
     {
         return Procedure::create([
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'created_by' => $owner->id,
             'reference_code' => 'SOP-PR-001',
             'name' => 'Ouverture de caisse',
@@ -141,7 +141,7 @@ class TriptychUploadTest extends TestCase
         $role = Role::firstOrCreate(['name' => 'operator']);
         $operator = User::factory()->create([
             'matricule' => 'OP-001',
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'role_id' => $role->id,
         ]);
 
@@ -158,7 +158,7 @@ class TriptychUploadTest extends TestCase
         $this->expectException(\Illuminate\Database\QueryException::class);
 
         Procedure::create([
-            'tenant_id' => $this->tenant->id,
+            'filiale_id' => $this->filiale->id,
             'created_by' => $user->id,
             'reference_code' => 'SOP-PR-001',
             'name' => 'Doublon',

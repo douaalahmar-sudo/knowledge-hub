@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 class KaizenReportController extends Controller
 {
     /**
-     * Display a listing of Kaizen feedback signals for the active tenant.
+     * Display a listing of Kaizen feedback signals for the active filiale.
      */
     public function index(Request $request): JsonResponse
     {

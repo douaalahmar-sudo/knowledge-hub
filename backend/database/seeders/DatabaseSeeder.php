@@ -3,11 +3,12 @@
 namespace Database\Seeders;
 
 use App\Models\Article;
+use App\Models\Filiale;
 use App\Models\KaizenReport;
 use App\Models\Procedure;
 use App\Models\Role;
-use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Database\FilialeContext;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -46,51 +47,63 @@ class DatabaseSeeder extends Seeder
             $roleModels[$name] = Role::updateOrCreate(['name' => $name], ['description' => $description]);
         }
 
-        // 2. Tenants
-        $hqTenant = Tenant::firstOrCreate(['name' => 'FLESK HQ & Services Centraux']);
-        $store101 = Tenant::firstOrCreate(['name' => 'FLESK Store #101 - Tunis']);
+        // 2. Filiales
+        $hqFiliale = Filiale::firstOrCreate(['name' => 'FLESK HQ & Services Centraux']);
+        $store101 = Filiale::firstOrCreate(['name' => 'FLESK Store #101 - Tunis']);
 
         // 3. One demo login per role (password: password123).
         // All roles are seeded in Store #101 EXCEPT `responsable_departement`, which
-        // is intentionally seeded on the HQ tenant per the chosen design (tenant-agnostic,
-        // "global business validation above store level" rather than scoped like
-        // Manager/Operator). See the flag below this array for the consequence of that
-        // choice under the current tenant-isolation implementation.
+        // is intentionally seeded on the HQ filiale per the chosen design
+        // (filiale-agnostic, "global business validation above store level" rather
+        // than scoped like Manager/Operator). See the flag below this array for the
+        // consequence of that choice under the current isolation implementation.
         $demoUsers = [
-            ['email' => 'admin@flesk.com',        'name' => 'Sami Ben Ali',    'matricule' => 'KH-ADM-001', 'role' => 'admin',                   'tenant' => 'store'],
-            ['email' => 'owner@flesk.com',        'name' => 'Amina Mansour',   'matricule' => 'KH-OWN-001', 'role' => 'process_owner',           'tenant' => 'store'],
-            ['email' => 'expert@flesk.com',       'name' => 'Nizar Haddad',    'matricule' => 'KH-EXP-001', 'role' => 'expert_metier',           'tenant' => 'store'],
-            ['email' => 'dept.manager@flesk.com', 'name' => 'Rania Sassi',     'matricule' => 'KH-DPT-001', 'role' => 'responsable_departement', 'tenant' => 'hq'],
-            ['email' => 'validator@flesk.com',    'name' => 'Leila Trabelsi',  'matricule' => 'KH-VAL-001', 'role' => 'validator',               'tenant' => 'store'],
-            ['email' => 'manager@flesk.com',      'name' => 'Karim Bouazizi',  'matricule' => 'KH-MGR-101', 'role' => 'manager',                 'tenant' => 'store'],
-            ['email' => 'operator@flesk.com',     'name' => 'Karim Zouari',    'matricule' => 'KH-OPR-101', 'role' => 'operator',                'tenant' => 'store'],
-            ['email' => 'hr.admin@flesk.com',     'name' => 'Fatma Gharbi',    'matricule' => 'KH-HRA-001', 'role' => 'hr_admin',                'tenant' => 'store'],
-            ['email' => 'hr.user@flesk.com',      'name' => 'Youssef Nasri',   'matricule' => 'KH-HRU-001', 'role' => 'hr_user',                 'tenant' => 'store'],
+            ['email' => 'admin@flesk.com',        'name' => 'Sami Ben Ali',    'matricule' => 'KH-ADM-001', 'role' => 'admin',                   'filiale' => 'store'],
+            ['email' => 'owner@flesk.com',        'name' => 'Amina Mansour',   'matricule' => 'KH-OWN-001', 'role' => 'process_owner',           'filiale' => 'store'],
+            ['email' => 'expert@flesk.com',       'name' => 'Nizar Haddad',    'matricule' => 'KH-EXP-001', 'role' => 'expert_metier',           'filiale' => 'store'],
+            ['email' => 'dept.manager@flesk.com', 'name' => 'Rania Sassi',     'matricule' => 'KH-DPT-001', 'role' => 'responsable_departement', 'filiale' => 'hq'],
+            ['email' => 'validator@flesk.com',    'name' => 'Leila Trabelsi',  'matricule' => 'KH-VAL-001', 'role' => 'validator',               'filiale' => 'store'],
+            ['email' => 'manager@flesk.com',      'name' => 'Karim Bouazizi',  'matricule' => 'KH-MGR-101', 'role' => 'manager',                 'filiale' => 'store'],
+            ['email' => 'operator@flesk.com',     'name' => 'Karim Zouari',    'matricule' => 'KH-OPR-101', 'role' => 'operator',                'filiale' => 'store'],
+            ['email' => 'hr.admin@flesk.com',     'name' => 'Fatma Gharbi',    'matricule' => 'KH-HRA-001', 'role' => 'hr_admin',                'filiale' => 'store'],
+            ['email' => 'hr.user@flesk.com',      'name' => 'Youssef Nasri',   'matricule' => 'KH-HRU-001', 'role' => 'hr_user',                 'filiale' => 'store'],
         ];
 
         $users = [];
         foreach ($demoUsers as $u) {
-            $tenant = $u['tenant'] === 'hq' ? $hqTenant : $store101;
+            $filiale = $u['filiale'] === 'hq' ? $hqFiliale : $store101;
             $users[$u['role']] = User::updateOrCreate(
                 ['email' => $u['email']],
                 [
-                    'name'      => $u['name'],
-                    'matricule' => $u['matricule'],
-                    'password'  => bcrypt('password123'),
-                    'tenant_id' => $tenant->id,
-                    'role_id'   => $roleModels[$u['role']]->id,
+                    'name'       => $u['name'],
+                    'matricule'  => $u['matricule'],
+                    'password'   => bcrypt('password123'),
+                    'filiale_id' => $filiale->id,
+                    'role_id'    => $roleModels[$u['role']]->id,
                 ]
             );
         }
 
-        // FLAG: `BelongsToTenant` (app/Traits/BelongsToTenant.php) scopes every query
-        // by strict `tenant_id` equality. Because dept.manager@flesk.com is seeded on
-        // the HQ tenant (not Store #101), they will NOT see Store #101's procedures
-        // through the existing global scope — so as seeded, this account cannot yet
-        // perform the "1st validation" step on Store #101 procedures. Making the HQ
-        // scope actually see store-level data requires extending BelongsToTenant (e.g.
-        // a hierarchical/"HQ sees all child stores" rule) — not implemented here.
+        // FLAG: the RLS policies scope every business table by strict `filiale_id`
+        // equality. Because dept.manager@flesk.com is seeded on the HQ filiale (not
+        // Store #101), they will NOT see Store #101's procedures — so as seeded, this
+        // account cannot yet perform the "1st validation" step on Store #101
+        // procedures. Letting HQ see store-level data means widening the policy
+        // predicate (e.g. a parent/child filiale hierarchy) — not implemented here.
 
+        // 4-6. Business data, all in Store #101. Wrapped in the filiale context
+        // because the RLS policies' WITH CHECK clause rejects an insert issued by a
+        // session that has not declared which filiale it is acting as.
+        FilialeContext::runAs($store101->id, function () use ($store101, $users) {
+            $this->seedBusinessData($store101, $users);
+        });
+    }
+
+    /**
+     * @param  array<string, User>  $users
+     */
+    private function seedBusinessData(Filiale $store101, array $users): void
+    {
         // 4. Sample procedures (owned by the process owner, in Store #101).
         $procedureSeeds = [
             ['reference_code' => 'PR-2026-010', 'name' => 'Procédure Ouverture & Fermeture de Caisse',        'module' => 'Operations',     'status' => 'Validé'],
@@ -105,7 +118,7 @@ class DatabaseSeeder extends Seeder
             $procedures[$p['reference_code']] = Procedure::firstOrCreate(
                 ['reference_code' => $p['reference_code']],
                 [
-                    'tenant_id'  => $store101->id,
+                    'filiale_id' => $store101->id,
                     'name'       => $p['name'],
                     'module'     => $p['module'],
                     'status'     => $p['status'],
@@ -169,7 +182,7 @@ class DatabaseSeeder extends Seeder
             Article::firstOrCreate(
                 ['slug' => $a['slug']],
                 [
-                    'tenant_id'            => $store101->id,
+                    'filiale_id'           => $store101->id,
                     'author_id'            => $users[$a['author']]->id,
                     'title'                => $a['title'],
                     'summary'              => $a['summary'],
@@ -212,7 +225,7 @@ class DatabaseSeeder extends Seeder
             KaizenReport::firstOrCreate(
                 ['description' => $k['description']],
                 [
-                    'tenant_id'    => $store101->id,
+                    'filiale_id'   => $store101->id,
                     'procedure_id' => $procedures[$k['reference']]->id,
                     'user_id'      => $users[$k['user']]->id,
                     'criticality'  => $k['criticality'],

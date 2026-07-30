@@ -21,7 +21,7 @@ class ProcedureDocumentIngestionService
     public function createVersion(Procedure $procedure, UploadedFile $file): ProcedureVersion
     {
         $storedPath = $file->storeAs(
-            'procedures/' . $procedure->tenant_id . '/' . $procedure->id,
+            'procedures/' . $procedure->filiale_id . '/' . $procedure->id,
             now()->format('YmdHis') . '_' . $file->getClientOriginalName(),
             'local'
         );
@@ -30,7 +30,7 @@ class ProcedureDocumentIngestionService
             $nextVersionNumber = ((int) ProcedureVersion::where('procedure_id', $procedure->id)->max('version_number')) + 1;
 
             $version = ProcedureVersion::create([
-                'tenant_id' => $procedure->tenant_id,
+                'filiale_id' => $procedure->filiale_id,
                 'procedure_id' => $procedure->id,
                 'version_number' => $nextVersionNumber,
                 'pdf_url' => $storedPath,
@@ -46,9 +46,9 @@ class ProcedureDocumentIngestionService
             return $version;
         });
 
-        ProcessProcedureVersionDocument::dispatch($version->id)->afterCommit();
+        ProcessProcedureVersionDocument::dispatch($version->id, $version->filiale_id)->afterCommit();
 
-        return $version->load(['procedure', 'tenant']);
+        return $version->load(['procedure', 'filiale']);
     }
 
     public function processVersion(ProcedureVersion $version): void
@@ -69,7 +69,7 @@ class ProcedureDocumentIngestionService
 
         foreach ($this->chunkText($documentText) as $index => $chunkText) {
             Embedding::create([
-                'tenant_id' => $version->tenant_id,
+                'filiale_id' => $version->filiale_id,
                 'procedure_version_id' => $version->id,
                 'chunk_text' => $chunkText,
                 'chunk_index' => $index,

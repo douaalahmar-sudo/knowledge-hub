@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Procedure extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use HasFactory;
 
     protected $fillable = [
         'reference_code',
@@ -28,7 +27,7 @@ class Procedure extends Model
         'is_active',
         'created_by',
         'current_version_id',
-        'tenant_id',
+        'filiale_id',
     ];
 
     protected $casts = [
@@ -65,11 +64,11 @@ class Procedure extends Model
     }
 
     /**
-     * The owning tenant/store.
+     * The owning filiale.
      */
-    public function tenant(): BelongsTo
+    public function filiale(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Filiale::class);
     }
 
     /**

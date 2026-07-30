@@ -2,17 +2,14 @@
 
 namespace App\Models;
 
-use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProcedureVersion extends Model
 {
-    use BelongsToTenant;
-
     protected $fillable = [
-        'tenant_id',
+        'filiale_id',
         'procedure_id',
         'version_number',
         'pdf_url',
@@ -37,8 +34,8 @@ class ProcedureVersion extends Model
         return $this->hasMany(Embedding::class);
     }
 
-    public function tenant(): BelongsTo
+    public function filiale(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Filiale::class);
     }
 }

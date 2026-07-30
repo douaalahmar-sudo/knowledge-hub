@@ -39,7 +39,7 @@ use Illuminate\Support\Facades\Hash;
  * 3. Shared hardening for either path
  *    - JIT-provision users, but map roles from an IdP group claim — never let
  *      the client supply its own role. Deny login if no group maps to a role.
- *    - Keep `tenant_id` assignment server-side, derived from the IdP claim.
+ *    - Keep `filiale_id` assignment server-side, derived from the IdP claim.
  *    - Enforce token expiry (`config('sanctum.expiration')`) and revoke tokens
  *      on IdP-side deprovisioning via SCIM or a scheduled reconciliation job.
  */
@@ -82,31 +82,36 @@ class AuthController extends Controller
             'email'     => 'required|string|email|max:255|unique:users',
             'matricule' => 'required|string|unique:users',
             'password'  => 'required|string|min:8',
-            'tenant_id' => 'required|exists:tenants,id',
+            'filiale_id' => 'required|uuid|exists:filiales,id',
         ]);
 
         $user = User::create([
-            'name'      => $validated['name'],
-            'email'     => $validated['email'],
-            'matricule' => $validated['matricule'],
-            'password'  => Hash::make($validated['password']),
-            'tenant_id' => $validated['tenant_id'],
+            'name'       => $validated['name'],
+            'email'      => $validated['email'],
+            'matricule'  => $validated['matricule'],
+            'password'   => Hash::make($validated['password']),
+            'filiale_id' => $validated['filiale_id'],
         ]);
 
         return response()->json($this->tokenPayload($user), 201);
     }
 
     /**
-     * Active authenticated user + resolved role/tenant.
+     * Active authenticated user + resolved role/filiale.
+     *
+     * The `tenant` key is kept as an alias of `filiale` because the Angular
+     * client still reads it (see AuthService.establishApiSession). Drop it once
+     * the frontend has moved over.
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user()->load('role', 'tenant');
+        $user = $request->user()->load('role', 'filiale');
 
         return response()->json([
-            'user'   => $user,
-            'role'   => $user->role?->name,
-            'tenant' => $user->tenant,
+            'user'    => $user,
+            'role'    => $user->role?->name,
+            'filiale' => $user->filiale,
+            'tenant'  => $user->filiale,
         ]);
     }
 
@@ -145,7 +150,7 @@ class AuthController extends Controller
         ]);
 
         // Real SSO would JIT-provision here from verified IdP claims. The mock
-        // only matches pre-seeded users, so it can never invent a role/tenant.
+        // only matches pre-seeded users, so it can never invent a role/filiale.
         $user = User::where('email', $validated['email'])->first();
 
         if (!$user) {
@@ -174,8 +179,10 @@ class AuthController extends Controller
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'expires_at'   => $expiresAt?->toIso8601String(),
-            'user'         => $user->load('role', 'tenant'),
-            'tenant'       => $user->tenant,
+            'user'         => $user->load('role', 'filiale'),
+            'filiale'      => $user->filiale,
+            // Legacy alias for the Angular client — see me().
+            'tenant'       => $user->filiale,
         ];
     }
 }

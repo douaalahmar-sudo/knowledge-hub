@@ -2,16 +2,13 @@
 
 namespace App\Models;
 
-use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class KaizenReport extends Model
 {
-    use BelongsToTenant;
-
     protected $fillable = [
-        'tenant_id',
+        'filiale_id',
         'procedure_id',
         'user_id',
         'criticality',
@@ -35,8 +32,8 @@ class KaizenReport extends Model
         return $this->belongsTo(User::class, 'process_owner_id');
     }
 
-    public function tenant(): BelongsTo
+    public function filiale(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Filiale::class);
     }
 }

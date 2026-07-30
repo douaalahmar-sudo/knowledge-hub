@@ -10,7 +10,6 @@ use App\Http\Controllers\HrRequestController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\Api\EtapeWorkflowController;
-use App\Http\Middleware\ResolveTenantContext;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,9 +30,9 @@ Route::prefix('v1/auth')->group(function () {
     // Mock SSO — refuses to run outside local/testing (see AuthController::ssoMock).
     Route::post('/sso/mock', [AuthController::class, 'ssoMock']);
 
-    // Authenticated auth endpoints. No ResolveTenantContext here: /me must stay
-    // reachable for a user whose tenant context is missing, otherwise clients
-    // can't introspect the session to find out why they're being rejected.
+    // /me stays reachable for a user with no filiale: SetTenantContext never
+    // rejects a request, it only publishes the filiale for RLS to filter on,
+    // so clients can still introspect the session to see why they see nothing.
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
@@ -42,8 +41,9 @@ Route::prefix('v1/auth')->group(function () {
 
 
 // ------------------- 2. Protected Routes -------------------
-// (Sanctum Session Guard + Tenant Context Resolution Active)
-Route::middleware(['auth:sanctum', ResolveTenantContext::class])->group(function () {
+// (Sanctum Session Guard. Filiale isolation is enforced by the PostgreSQL RLS
+// policies; SetTenantContext runs globally and publishes the filiale for them.)
+Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -54,7 +54,7 @@ Route::middleware(['auth:sanctum', ResolveTenantContext::class])->group(function
 
     // --- KNOWLEDGE BASE / HR ARTICLES (Module 1) ---
     Route::prefix('v1')->group(function () {
-        // Reading is open to any authenticated user in the tenant.
+        // Reading is open to any authenticated user in the filiale.
         Route::get('/articles', [ArticleController::class, 'index']);
         Route::get('/articles/{article}', [ArticleController::class, 'show']);
 

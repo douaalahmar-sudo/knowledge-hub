@@ -99,6 +99,49 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
+        /*
+         * DDL connection. The application connects as a NOSUPERUSER/NOBYPASSRLS
+         * role (see database/sql/create_rls_app_role.sql) which deliberately
+         * cannot create or alter tables, so migrations run against this one:
+         *
+         *     php artisan migrate --database=pgsql_admin
+         */
+        'pgsql_admin' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_ADMIN_URL'),
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'laravel'),
+            'username' => env('DB_ADMIN_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('DB_ADMIN_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
+        /*
+         * PostgreSQL connection used by FilialeRowLevelSecurityTest. The rest of
+         * the suite runs on in-memory sqlite, which has no RLS, so the isolation
+         * test needs a real PostgreSQL session opened as the restricted role —
+         * connecting as a superuser here would make the test pass vacuously.
+         * The test skips itself when this connection is unreachable.
+         */
+        'pgsql_rls_test' => [
+            'driver' => 'pgsql',
+            'host' => env('RLS_TEST_DB_HOST', '127.0.0.1'),
+            'port' => env('RLS_TEST_DB_PORT', '5432'),
+            'database' => env('RLS_TEST_DB_DATABASE', 'knowledge_hub'),
+            'username' => env('RLS_TEST_DB_USERNAME', 'kh_app'),
+            'password' => env('RLS_TEST_DB_PASSWORD', 'change-me-in-env'),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

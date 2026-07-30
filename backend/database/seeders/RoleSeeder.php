@@ -15,7 +15,7 @@ class RoleSeeder extends Seeder
         $roles = [
             [
                 'name' => 'admin',
-                'description' => 'Full tenant control and system administration',
+                'description' => 'Full filiale control and system administration',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
