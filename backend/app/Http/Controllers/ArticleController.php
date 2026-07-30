@@ -212,4 +212,27 @@ class ArticleController extends Controller
         $words = str_word_count(strip_tags($content));
         return max(1, (int) ceil($words / 200));
     }
+
+    /**
+     * STUB — pattern for the upcoming Article policies, not wired to a route.
+     * Wiring this into store()/update() now would lock out every already-seeded
+     * demo user: none of them has `access_role` set beyond the 'lecteur'
+     * default, since backfilling it wasn't part of this change.
+     *
+     * Two equivalent ways to apply the same check, once you're ready to enforce
+     * it for real:
+     *   1. Direct model check   — $request->user()->hasRole(['redacteur', 'admin'])
+     *   2. Gate (AppServiceProvider@create-articles, same rule) — Gate::authorize('create-articles')
+     */
+    public function exampleAccessRoleGateUsage(Request $request): JsonResponse
+    {
+        if (! $request->user()->hasRole(['redacteur', 'admin'])) {
+            abort(403, 'Seul un rédacteur ou un administrateur peut créer un article.');
+        }
+
+        // Equivalent, via the Gate defined in AppServiceProvider:
+        // Gate::authorize('create-articles');
+
+        return response()->json(['message' => 'Autorisé.']);
+    }
 }

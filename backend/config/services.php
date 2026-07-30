@@ -40,4 +40,20 @@ return [
         'embedding_model' => env('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small'),
     ],
 
+    'google_drive' => [
+        // 'service_account' (production: requires a Shared Drive) or 'oauth'
+        // (local/dev: acts as your own Google account instead).
+        'auth_mode' => env('GOOGLE_DRIVE_AUTH_MODE', 'service_account'),
+
+        'service_account_path' => env(
+            'GOOGLE_DRIVE_SERVICE_ACCOUNT_PATH',
+            storage_path('app/private/google-service-account.json')
+        ),
+
+        // Minted once via `php artisan google-drive:oauth-setup`.
+        'oauth_client_id' => env('GOOGLE_DRIVE_OAUTH_CLIENT_ID'),
+        'oauth_client_secret' => env('GOOGLE_DRIVE_OAUTH_CLIENT_SECRET'),
+        'oauth_refresh_token' => env('GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN'),
+    ],
+
 ];

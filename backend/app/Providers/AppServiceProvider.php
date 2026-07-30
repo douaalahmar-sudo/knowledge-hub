@@ -33,5 +33,14 @@ class AppServiceProvider extends ServiceProvider
             }
             return $user->role?->name === 'process_owner' && $kaizen->assigned_to === $user->id;
         });
+
+        // 5. STUB — pattern for the upcoming Article policies, built on the new
+        // access_role enum (App\Enums\UserRole) rather than the role_id gates
+        // above. Not yet applied to any route; see
+        // ArticleController::exampleAccessRoleGateUsage() for the controller
+        // side of this same check.
+        Gate::define('create-articles', function (User $user) {
+            return $user->hasRole(['redacteur', 'admin']);
+        });
     }
 }
