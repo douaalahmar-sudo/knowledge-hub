@@ -1,0 +1,116 @@
+<div class="ad-page">
+  <div class="ad-shell">
+
+    <a routerLink="/dashboard/articles" class="ad-back">
+      <app-icon name="arrow-left" [size]="15" />
+      <span>Retour aux articles</span>
+    </a>
+
+    @if (state() === 'loading') {
+      <div class="ad-card ad-state">
+        <div class="ad-spinner"></div>
+        <p>Chargement de l'article…</p>
+      </div>
+    } @else if (state() === 'not-found') {
+      <div class="ad-card ad-state">
+        <app-icon name="inbox" [size]="26" />
+        <p>Cet article n'existe pas, ou vous n'avez pas les droits pour le consulter.</p>
+        <a routerLink="/dashboard/articles" class="ad-btn ad-btn--ghost">Retour à la liste</a>
+      </div>
+    } @else if (state() === 'error') {
+      <div class="ad-card ad-state ad-state--error">
+        <app-icon name="alert" [size]="26" />
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="ad-btn ad-btn--primary" (click)="retry()">
+          Réessayer
+        </button>
+      </div>
+    } @else {
+      @let a = article()!;
+      @let badge = statusBadge()!;
+
+      <header>
+        <p class="ad-eyebrow">Articles</p>
+
+        <div class="ad-badges">
+          <span class="ad-badge" [style.background-color]="badge.background" [style.color]="badge.color">
+            {{ badge.label }}
+          </span>
+          @if (isGoldenRule()) {
+            <span class="ad-badge ad-badge--golden">
+              <app-icon name="star" [size]="13" />
+              Règle d'or
+            </span>
+          }
+        </div>
+
+        <h1 class="ad-title">{{ a.title }}</h1>
+
+        <div class="ad-meta">
+          <span class="ad-meta__item">
+            <app-icon name="user" [size]="14" />
+            {{ a.author.name }}
+          </span>
+          <span class="ad-meta__item">
+            <app-icon name="calendar" [size]="14" />
+            Créé le {{ a.created_at | date:'dd/MM/yyyy' }}
+          </span>
+          @if (a.updated_at !== a.created_at) {
+            <span class="ad-meta__item">
+              <app-icon name="clock" [size]="14" />
+              Modifié le {{ a.updated_at | date:'dd/MM/yyyy' }}
+            </span>
+          }
+        </div>
+      </header>
+
+      @if (a.tags_metier.length > 0) {
+        <div class="ad-tags">
+          @for (tag of a.tags_metier; track tag) {
+            <span class="ad-tag">{{ tag }}</span>
+          }
+        </div>
+      }
+
+      <section class="ad-card">
+        <div class="ad-card__head">
+          <h2 class="ad-card__title">Résumé</h2>
+        </div>
+
+        @if (a.content_summary) {
+          <p class="ad-summary">{{ a.content_summary }}</p>
+        } @else {
+          <p class="ad-empty">Aucun résumé renseigné.</p>
+        }
+      </section>
+
+      <section class="ad-card">
+        <div class="ad-card__head">
+          <h2 class="ad-card__title">Formats du triptyque</h2>
+        </div>
+
+        <div class="ad-formats">
+          @for (format of formats; track format) {
+            @let sp = spec(format);
+            @let present = hasFormat(a, format);
+
+            <div class="ad-format" [class.ad-format--present]="present">
+              <span class="ad-format__icon"><app-icon [name]="sp.icon" [size]="18" /></span>
+              <div>
+                <p class="ad-format__label">{{ sp.label }}</p>
+                <p class="ad-format__status">
+                  @if (present) {
+                    <app-icon name="check-circle" [size]="12" /> Attaché
+                  } @else {
+                    Non fourni
+                  }
+                </p>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+  </div>
+</div>

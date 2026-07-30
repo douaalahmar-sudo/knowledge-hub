@@ -12,6 +12,20 @@ import {
 } from '../models/article.model';
 
 /**
+ * Thrown by every ArticleApiService method on failure. `message` is already
+ * the mapped, ready-to-display French string; `status` is the original HTTP
+ * status code, kept around so a caller can tell "not found" apart from "some
+ * other failure" without parsing message text (e.g. ArticleWorkflowDetailComponent
+ * needs a distinct not-found state for a 404).
+ */
+export class ArticleApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = 'ArticleApiError';
+  }
+}
+
+/**
  * Live HTTP client for the articles API
  * (backend/app/Http/Controllers/ArticleController.php).
  *
@@ -67,7 +81,7 @@ export class ArticleApiService {
 
   private fail(fallback: string) {
     return (err: HttpErrorResponse) =>
-      throwError(() => new Error(ArticleApiService.toMessage(err, fallback)));
+      throwError(() => new ArticleApiError(ArticleApiService.toMessage(err, fallback), err.status));
   }
 
   /** Visibility (lecteur sees published+active only) is enforced server-side. */

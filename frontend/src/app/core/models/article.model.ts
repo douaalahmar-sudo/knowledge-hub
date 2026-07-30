@@ -90,6 +90,39 @@ export interface RejectArticlePayload {
 }
 
 // --------------------------------------------------------------------------
+// Status badge styling — shared by ArticleWorkflowListComponent and
+// ArticleWorkflowDetailComponent so both render the exact same colors/labels
+// for a given status instead of two components independently guessing.
+// --------------------------------------------------------------------------
+
+export interface ArticleStatusBadge {
+  label: string;
+  background: string;
+  color: string;
+}
+
+/** draft=gray, pending_*=amber, published=green, archived=neutral (darker than draft, on purpose). */
+export const ARTICLE_STATUS_BADGES: Record<ArticleStatus, ArticleStatusBadge> = {
+  draft: { label: 'Brouillon', background: '#f1f5f9', color: '#475569' },
+  pending_metier: { label: 'En attente — métier', background: '#fef3c7', color: '#b45309' },
+  pending_qualite: { label: 'En attente — qualité', background: '#fef3c7', color: '#b45309' },
+  published: { label: 'Publié', background: '#dcfce7', color: '#15803d' },
+  archived: { label: 'Archivé', background: '#e2e8f0', color: '#334155' },
+};
+
+/** Which `format_*_drive_id` column backs a given file slot. */
+export function articleFileId(article: Article, format: ArticleFileFormat): string | null {
+  switch (format) {
+    case 'pdf':
+      return article.format_pdf_drive_id;
+    case 'infographie':
+      return article.format_infographie_drive_id;
+    case 'video':
+      return article.format_video_drive_id;
+  }
+}
+
+// --------------------------------------------------------------------------
 // Client-side file upload validation (pdf/infographie/video slots).
 // Same caps as ArticleFileFormat::validationRule() server-side
 // (backend/app/Enums/ArticleFileFormat.php) — this exists to fail fast and

@@ -3,23 +3,14 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { ArticleApiService } from '../../../core/services/article-api.service';
-import { Article, ArticleCriticite, ArticleStatus } from '../../../core/models/article.model';
+import {
+  ARTICLE_STATUS_BADGES,
+  Article,
+  ArticleCriticite,
+  ArticleStatus,
+  ArticleStatusBadge,
+} from '../../../core/models/article.model';
 import { IconComponent } from '../../../shared/icon/icon.component';
-
-interface StatusBadge {
-  label: string;
-  background: string;
-  color: string;
-}
-
-/** draft=gray, pending_*=amber, published=green, archived=neutral (darker than draft, on purpose). */
-const STATUS_BADGES: Record<ArticleStatus, StatusBadge> = {
-  draft: { label: 'Brouillon', background: '#f1f5f9', color: '#475569' },
-  pending_metier: { label: 'En attente — métier', background: '#fef3c7', color: '#b45309' },
-  pending_qualite: { label: 'En attente — qualité', background: '#fef3c7', color: '#b45309' },
-  published: { label: 'Publié', background: '#dcfce7', color: '#15803d' },
-  archived: { label: 'Archivé', background: '#e2e8f0', color: '#334155' },
-};
 
 /**
  * Read-only list for the real, workflow-backed articles (ArticleApiService).
@@ -68,8 +59,8 @@ export class ArticleWorkflowListComponent implements OnInit {
       });
   }
 
-  statusBadge(status: ArticleStatus): StatusBadge {
-    return STATUS_BADGES[status];
+  statusBadge(status: ArticleStatus): ArticleStatusBadge {
+    return ARTICLE_STATUS_BADGES[status];
   }
 
   isGoldenRule(criticite: ArticleCriticite): boolean {

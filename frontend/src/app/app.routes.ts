@@ -122,20 +122,25 @@ export const routes: Routes = [
             // No roleGuard: read access is open to any authenticated user,
             // same as knowledge-base — visibility (lecteur sees
             // published+active only) is enforced server-side, not by a route
-            // guard. /dashboard/articles/:id is a placeholder until the
-            // detail component exists.
+            // guard.
             {
                 path: 'articles',
                 loadComponent: () => import('./features/article-workflow/article-list/article-list.component').then(m => m.ArticleWorkflowListComponent)
             },
             // /dashboard/articles/new -> create-only editor (no edit mode yet).
             // Declared here so it's ready before ':id' is: a literal 'new'
-            // segment must be registered ahead of a future ':id' route, or the
-            // wildcard would swallow it — same ordering rule as
-            // procedures/new vs procedures/:id above.
+            // segment must be registered ahead of ':id', or ':id' would swallow
+            // it — same ordering rule as procedures/new vs procedures/:id above.
             {
                 path: 'articles/new',
                 loadComponent: () => import('./features/article-workflow/article-editor/article-editor.component').then(m => m.ArticleWorkflowEditorComponent)
+            },
+            // /dashboard/articles/:id -> read-only detail (layout + data only;
+            // no viewer yet, no workflow actions yet). List and editor already
+            // link here.
+            {
+                path: 'articles/:id',
+                loadComponent: () => import('./features/article-workflow/article-detail/article-detail.component').then(m => m.ArticleWorkflowDetailComponent)
             }
         ]
     },
