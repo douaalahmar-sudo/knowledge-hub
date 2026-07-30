@@ -114,6 +114,19 @@ export const routes: Routes = [
             {
                 path: 'knowledge-base/:slug',
                 loadComponent: () => import('./features/articles/article-detail/article-detail.component').then(m => m.ArticleDetailComponent)
+            },
+            // ---- Article workflow module (draft -> pending_metier ->
+            // pending_qualite -> published/archived) ----
+            // Genuinely separate from knowledge-base above: real backend
+            // (ArticleApiService), not the mock ArticleService/old schema.
+            // No roleGuard: read access is open to any authenticated user,
+            // same as knowledge-base — visibility (lecteur sees
+            // published+active only) is enforced server-side, not by a route
+            // guard. /dashboard/articles/:id is a placeholder until the
+            // detail component exists.
+            {
+                path: 'articles',
+                loadComponent: () => import('./features/article-workflow/article-list/article-list.component').then(m => m.ArticleWorkflowListComponent)
             }
         ]
     },
