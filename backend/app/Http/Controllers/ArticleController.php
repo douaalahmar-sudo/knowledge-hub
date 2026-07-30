@@ -2,237 +2,132 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ArticleCriticite;
+use App\Enums\ArticleStatus;
+use App\Enums\UserRole;
+use App\Http\Requests\StoreArticleRequest;
+use App\Http\Requests\UpdateArticleRequest;
 use App\Models\Article;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
+/**
+ * CRUD only — no status-transition endpoints (submit/validate-metier/
+ * validate-qualite/archive) and no Drive file uploads yet. Both are separate
+ * tasks layered on top of this.
+ */
 class ArticleController extends Controller
 {
-    private const CATEGORIES = 'news_announcements,onboarding_guides,policies_guidelines,hr_documentation';
-    private const STATUSES = 'draft,published,archived';
-
     /**
-     * List articles with optional category / search / status filters.
-     * (Filiale scoping is applied by the PostgreSQL RLS policy on `articles`.)
+     * Filiale scoping needs nothing here: the RLS policy on `articles` already
+     * confines every query on this connection to the caller's filiale. The
+     * only extra restriction applied in the app itself is role-based — a
+     * lecteur only ever sees published, current-version articles.
      */
     public function index(Request $request): JsonResponse
     {
         $query = Article::with('author:id,name,email')->latest();
 
-        if ($request->filled('category')) {
-            $query->where('category', $request->query('category'));
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->query('status'));
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->query('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('summary', 'like', "%{$search}%")
-                  ->orWhere('content', 'like', "%{$search}%");
-            });
+        if ($request->user()->hasRole(UserRole::Lecteur)) {
+            $this->restrictToPublishedActive($query);
         }
 
         return response()->json($query->get(), 200);
     }
 
-    /**
-     * Read a single article by slug (implicit route-model binding).
-     */
-    public function show(Article $article): JsonResponse
+    public function show(Request $request, Article $article): JsonResponse
     {
+        // RLS already let this row through (same filiale); a lecteur asking
+        // for a draft/superseded article by id still shouldn't see it. 404
+        // rather than 403 — same as index(), it's simply not there for them.
+        if ($request->user()->hasRole(UserRole::Lecteur) && ! $this->isPublishedActive($article)) {
+            abort(404);
+        }
+
         return response()->json($article->load('author:id,name,email'), 200);
     }
 
-    /**
-     * Create a new article (multipart — supports cover image + attachments).
-     */
-    public function store(Request $request): JsonResponse
+    public function store(StoreArticleRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'title'           => 'required|string|max:255',
-            'category'        => 'required|in:' . self::CATEGORIES,
-            'content'         => 'required|string',
-            'status'          => 'nullable|in:' . self::STATUSES,
-            'summary'         => 'nullable|string',
-            'tags'            => 'nullable|array',
-            'tags.*'          => 'string|max:50',
-            'cover_image'     => 'nullable|image|max:10240',
-            'cover_image_url' => 'nullable|string|max:2048',
-            'attachments'     => 'nullable|array',
-            'attachments.*'   => 'file|max:10240',
-        ]);
+        Gate::authorize('create-articles');
 
-        $status = $validated['status'] ?? 'draft';
+        $validated = $request->validated();
+        $user = $request->user();
 
         $article = Article::create([
-            'author_id'            => $request->user()->id,
-            'title'                => $validated['title'],
-            'slug'                 => $this->uniqueSlug($validated['title']),
-            'summary'              => $validated['summary'] ?? null,
-            'content'              => $validated['content'],
-            'category'             => $validated['category'],
-            'tags'                 => $validated['tags'] ?? [],
-            'status'               => $status,
-            'published_at'         => $status === 'published' ? now() : null,
-            'cover_image_url'      => $this->resolveCover($request, $validated['cover_image_url'] ?? null),
-            'attachments'          => $this->storeAttachments($request),
-            'reading_time_minutes' => $this->readingTime($validated['content']),
-            // Set explicitly now that there is no global scope doing it: the RLS
-            // policy's WITH CHECK clause rejects an insert whose filiale_id does
-            // not match the session's filiale, so a missing value fails loudly.
-            'filiale_id'           => $request->user()->filiale_id,
+            'filiale_id' => $user->filiale_id,
+            'title' => $validated['title'],
+            'slug' => $this->uniqueSlug($validated['title']),
+            'content_summary' => $validated['content_summary'] ?? null,
+            'tags_metier' => $validated['tags_metier'] ?? [],
+            'criticite' => $validated['criticite'] ?? ArticleCriticite::Note->value,
+            'status' => ArticleStatus::Draft->value,
+            'author_id' => $user->id,
+            // Reassignable later (e.g. to whoever's actually accountable for
+            // the data); defaulting to the author keeps this step optional now.
+            'data_owner_id' => $user->id,
         ]);
 
         return response()->json($article->load('author:id,name,email'), 201);
     }
 
     /**
-     * Update an article by slug. Handles partial payloads (e.g. archive sends only status).
+     * All three conditions — create-articles Gate, author, still-draft — are
+     * enforced in UpdateArticleRequest::authorize(); by the time this runs,
+     * that's already guaranteed.
      */
-    public function update(Request $request, Article $article): JsonResponse
+    public function update(UpdateArticleRequest $request, Article $article): JsonResponse
     {
-        $validated = $request->validate([
-            'title'           => 'sometimes|required|string|max:255',
-            'category'        => 'sometimes|required|in:' . self::CATEGORIES,
-            'content'         => 'sometimes|required|string',
-            'status'          => 'sometimes|required|in:' . self::STATUSES,
-            'summary'         => 'nullable|string',
-            'tags'            => 'nullable|array',
-            'tags.*'          => 'string|max:50',
-            'cover_image'     => 'nullable|image|max:10240',
-            'cover_image_url' => 'nullable|string|max:2048',
-            'attachments'     => 'nullable|array',
-            'attachments.*'   => 'file|max:10240',
-        ]);
-
-        // Patch only the fields that were actually sent.
-        foreach (['title', 'category', 'content', 'summary'] as $field) {
-            if ($request->has($field)) {
-                $article->{$field} = $validated[$field] ?? $article->{$field};
-            }
-        }
-
-        if ($request->has('tags')) {
-            $article->tags = $validated['tags'] ?? [];
-        }
-
-        if ($request->filled('content')) {
-            $article->reading_time_minutes = $this->readingTime($validated['content']);
-        }
-
-        // Cover: an uploaded file or a pasted URL supersedes the existing value.
-        if ($request->hasFile('cover_image') || $request->filled('cover_image_url')) {
-            $article->cover_image_url = $this->resolveCover($request, $validated['cover_image_url'] ?? null);
-        }
-
-        // Append any newly uploaded attachments.
-        if ($request->hasFile('attachments')) {
-            $article->attachments = array_merge($article->attachments ?? [], $this->storeAttachments($request));
-        }
-
-        if ($request->has('status')) {
-            $article->status = $validated['status'];
-            // Stamp published_at the first time an article goes live.
-            if ($validated['status'] === 'published' && !$article->published_at) {
-                $article->published_at = now();
-            }
-        }
-
+        $article->fill($request->validated());
         $article->save();
 
         return response()->json($article->load('author:id,name,email'), 200);
     }
 
-    // ---------------- Helpers ----------------
+    /**
+     * Articles are never hard-deleted — the "Zéro Doublon" versioning model
+     * (parent_article_id / is_active_version) retires a version by archiving
+     * it through the workflow, not by removing the row. $article is still
+     * route-bound so a nonexistent id 404s before reaching this at all; the
+     * block itself doesn't depend on which article it is.
+     */
+    public function destroy(Article $article): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Les articles ne sont pas supprimés directement : ils sont archivés via le workflow de validation.',
+        ], 403);
+    }
 
     /**
-     * Build a globally-unique slug from the title.
+     * Applied as a query constraint in index().
+     */
+    private function restrictToPublishedActive(Builder $query): void
+    {
+        $query->where('status', ArticleStatus::Published->value)
+            ->where('is_active_version', true);
+    }
+
+    /**
+     * Same rule as restrictToPublishedActive(), checked against an
+     * already-loaded row instead of applied to a query — used by show().
+     */
+    private function isPublishedActive(Article $article): bool
+    {
+        return $article->status === ArticleStatus::Published && $article->is_active_version;
+    }
+
+    /**
+     * `slug` is unique across every filiale, but this query only sees rows in
+     * the caller's own filiale — RLS filters it before uniqueness is ever
+     * checked. A slug that looks free from here can still collide with
+     * another filiale's article, so a check-then-insert loop can't be trusted;
+     * a random suffix sidesteps needing one at all.
      */
     private function uniqueSlug(string $title): string
     {
-        $base = Str::slug($title) ?: 'article';
-        $slug = $base;
-        $i = 1;
-        while (Article::withoutGlobalScopes()->where('slug', $slug)->exists()) {
-            $slug = $base . '-' . (++$i);
-        }
-        return $slug;
-    }
-
-    /**
-     * Store an uploaded cover image, or fall back to a provided URL.
-     */
-    private function resolveCover(Request $request, ?string $url): ?string
-    {
-        if ($request->hasFile('cover_image')) {
-            $path = $request->file('cover_image')->store(
-                'articles/' . $request->user()->filiale_id . '/covers',
-                'public'
-            );
-            return Storage::disk('public')->url($path);
-        }
-        return $url ?: null;
-    }
-
-    /**
-     * Persist uploaded attachments and return {name, url, size} descriptors.
-     */
-    private function storeAttachments(Request $request): array
-    {
-        if (!$request->hasFile('attachments')) {
-            return [];
-        }
-
-        $folder = 'articles/' . $request->user()->filiale_id . '/attachments';
-
-        return collect($request->file('attachments'))
-            ->map(function (UploadedFile $file) use ($folder) {
-                $path = $file->store($folder, 'public');
-                return [
-                    'name' => $file->getClientOriginalName(),
-                    'url'  => Storage::disk('public')->url($path),
-                    'size' => $file->getSize(),
-                ];
-            })
-            ->all();
-    }
-
-    /**
-     * Estimate reading time: word count / 200 WPM, HTML stripped, minimum 1.
-     */
-    private function readingTime(string $content): int
-    {
-        $words = str_word_count(strip_tags($content));
-        return max(1, (int) ceil($words / 200));
-    }
-
-    /**
-     * STUB — pattern for the upcoming Article policies, not wired to a route.
-     * Wiring this into store()/update() now would lock out every already-seeded
-     * demo user: none of them has `access_role` set beyond the 'lecteur'
-     * default, since backfilling it wasn't part of this change.
-     *
-     * Two equivalent ways to apply the same check, once you're ready to enforce
-     * it for real:
-     *   1. Direct model check   — $request->user()->hasRole(['redacteur', 'admin'])
-     *   2. Gate (AppServiceProvider@create-articles, same rule) — Gate::authorize('create-articles')
-     */
-    public function exampleAccessRoleGateUsage(Request $request): JsonResponse
-    {
-        if (! $request->user()->hasRole(['redacteur', 'admin'])) {
-            abort(403, 'Seul un rédacteur ou un administrateur peut créer un article.');
-        }
-
-        // Equivalent, via the Gate defined in AppServiceProvider:
-        // Gate::authorize('create-articles');
-
-        return response()->json(['message' => 'Autorisé.']);
+        return Str::slug($title).'-'.Str::lower(Str::random(6));
     }
 }

@@ -52,17 +52,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/search', [GlobalSearchController::class, 'search']);
     });
 
-    // --- KNOWLEDGE BASE / HR ARTICLES (Module 1) ---
+    // --- KNOWLEDGE BASE / ARTICLES (Module 1) ---
+    // Authorization here is access_role-based (App\Enums\UserRole), not the
+    // role_id/CheckRole system the rest of the API still uses — the two are
+    // deliberately separate (see User::hasRole()). Read restrictions (lecteur
+    // sees published+current only) and the author/draft-only update rule live
+    // inside the controller/UpdateArticleRequest, not route middleware.
     Route::prefix('v1')->group(function () {
-        // Reading is open to any authenticated user in the filiale.
         Route::get('/articles', [ArticleController::class, 'index']);
         Route::get('/articles/{article}', [ArticleController::class, 'show']);
-
-        // Authoring mirrors the Angular knowledge-base/new|edit route guard.
-        Route::post('/articles', [ArticleController::class, 'store'])
-            ->middleware('role:admin,hr_admin,expert_metier');
-        Route::put('/articles/{article}', [ArticleController::class, 'update'])
-            ->middleware('role:admin,hr_admin,expert_metier');
+        Route::post('/articles', [ArticleController::class, 'store']);
+        Route::put('/articles/{article}', [ArticleController::class, 'update']);
+        Route::delete('/articles/{article}', [ArticleController::class, 'destroy']);
     });
 
     // --- HR SELF-SERVICE / EMPLOYEE SERVICES (Module 2) ---
