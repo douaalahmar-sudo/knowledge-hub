@@ -23,7 +23,14 @@
       "Read(//c/Users/MSI/.config/herd/bin/**)",
       "Read(//c/Users/MSI/Downloads/**)",
       "Bash(\"/c/Users/MSI/.config/herd/bin/php.bat\" -l app/Console/Commands/GoogleDriveOAuthSetup.php)",
-      "Bash(\"/c/Users/MSI/.config/herd/bin/php.bat\" \"C:/Users/MSI/AppData/Local/Temp/claude/c--Users-MSI-Desktop-knowledge-hub/09f2d651-d0a2-4ded-9b34-ae5f965abb83/scratchpad/verify_articles.php\")"
+      "Bash(\"/c/Users/MSI/.config/herd/bin/php.bat\" \"C:/Users/MSI/AppData/Local/Temp/claude/c--Users-MSI-Desktop-knowledge-hub/09f2d651-d0a2-4ded-9b34-ae5f965abb83/scratchpad/verify_articles.php\")",
+      "Bash(npx tsc *)",
+      "Bash(echo \"EXIT CODE: $?\")",
+      "Bash(grep -v \"^src/app/core/services/article-api.service.ts$\")",
+      "Bash(grep -v \"^src/app/core/models/article.model.ts$\")",
+      "Bash(\"/c/Users/MSI/.config/herd/bin/php.bat\" -l app/Providers/AppServiceProvider.php)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(node \"C:/Users/MSI/AppData/Local/Temp/claude/c--Users-MSI-Desktop-knowledge-hub/09f2d651-d0a2-4ded-9b34-ae5f965abb83/scratchpad/verify_tomessage.js\")"
     ]
   }
 }
