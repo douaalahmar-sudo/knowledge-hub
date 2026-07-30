@@ -22,7 +22,8 @@
       "Bash(\"C:/Users/MSI/.config/herd/bin/php.bat\" -r \"echo 'checking composer availability';\")",
       "Read(//c/Users/MSI/.config/herd/bin/**)",
       "Read(//c/Users/MSI/Downloads/**)",
-      "Bash(\"/c/Users/MSI/.config/herd/bin/php.bat\" -l app/Console/Commands/GoogleDriveOAuthSetup.php)"
+      "Bash(\"/c/Users/MSI/.config/herd/bin/php.bat\" -l app/Console/Commands/GoogleDriveOAuthSetup.php)",
+      "Bash(\"/c/Users/MSI/.config/herd/bin/php.bat\" \"C:/Users/MSI/AppData/Local/Temp/claude/c--Users-MSI-Desktop-knowledge-hub/09f2d651-d0a2-4ded-9b34-ae5f965abb83/scratchpad/verify_articles.php\")"
     ]
   }
 }
