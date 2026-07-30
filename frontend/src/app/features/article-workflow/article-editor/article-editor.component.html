@@ -1,0 +1,198 @@
+<div class="ae-page">
+  <div class="ae-shell">
+
+    <header>
+      <a routerLink="/dashboard/articles" class="ae-back">
+        <app-icon name="arrow-left" [size]="15" />
+        <span>Retour aux articles</span>
+      </a>
+      <p class="ae-eyebrow">Articles</p>
+      <h1 class="ae-title">Nouvel article</h1>
+      <p class="ae-subtitle">
+        Renseignez les informations puis déposez le triptyque documentaire. Le PDF
+        est obligatoire — l'infographie et la vidéo sont facultatives.
+      </p>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="ae-form">
+
+      <!-- --------------------------------------------------- metadata --- -->
+      <section class="ae-card">
+        <div class="ae-card__head">
+          <h2 class="ae-card__title">Informations générales</h2>
+          <p class="ae-card__hint">Titre, résumé, mots-clés et niveau de criticité.</p>
+        </div>
+
+        <div class="ae-grid">
+          <div class="ae-field ae-field--wide">
+            <label for="title">Titre <span class="ae-req">*</span></label>
+            <input id="title" type="text" formControlName="title"
+                   placeholder="Consignes de sécurité — Réception marchandises"
+                   [class.ae-invalid]="fieldError('title')" />
+            @if (fieldError('title')) { <p class="ae-error">{{ fieldError('title') }}</p> }
+          </div>
+
+          <div class="ae-field ae-field--wide">
+            <label for="content_summary">Résumé</label>
+            <textarea id="content_summary" formControlName="content_summary" rows="4"
+                      placeholder="Court résumé utilisé pour la recherche lexicale…"></textarea>
+          </div>
+
+          <div class="ae-field ae-field--wide">
+            <label for="tags_metier">Mots-clés métier</label>
+            <input id="tags_metier" type="text" formControlName="tags_metier"
+                   placeholder="sécurité, réception, entrepôt" />
+            <p class="ae-help">Séparez les mots-clés par une virgule.</p>
+          </div>
+
+          <div class="ae-field ae-field--wide">
+            <label>Criticité</label>
+            <div class="ae-radios">
+              <label class="ae-radio ae-radio--golden">
+                <input type="radio" formControlName="criticite" value="golden_rule" />
+                <app-icon name="star" [size]="14" />
+                Règle d'or
+              </label>
+              <label class="ae-radio">
+                <input type="radio" formControlName="criticite" value="note" />
+                Note
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- --------------------------------------------------- triptych --- -->
+      <section class="ae-card">
+        <div class="ae-card__head">
+          <h2 class="ae-card__title">Formats du triptyque</h2>
+          <p class="ae-card__hint">
+            Glissez-déposez un fichier ou cliquez pour parcourir. Les fichiers sont
+            envoyés une fois l'article créé, dans l'ordre PDF puis infographie puis
+            vidéo.
+          </p>
+        </div>
+
+        <div class="ae-slots">
+          @for (format of formats; track format) {
+            @let s = slot(format);
+            @let sp = spec(format);
+
+            <div class="ae-slot"
+                 [class.ae-slot--dragging]="s.dragging"
+                 [class.ae-slot--done]="s.uploadStatus === 'done'"
+                 [class.ae-slot--error]="s.error || s.uploadStatus === 'failed'"
+                 (dragover)="onDragOver($event, format)"
+                 (dragleave)="onDragLeave($event, format)"
+                 (drop)="onDrop($event, format)">
+
+              <div class="ae-slot__head">
+                <span class="ae-slot__icon"><app-icon [name]="sp.icon" [size]="20" /></span>
+                <div>
+                  <h3 class="ae-slot__label">
+                    {{ sp.label }}
+                    @if (format === 'pdf') { <span class="ae-req">*</span> }
+                  </h3>
+                  <p class="ae-slot__hint">{{ sp.hint }}</p>
+                </div>
+              </div>
+
+              <label class="ae-drop" [attr.for]="'file-' + format">
+                <input class="ae-drop__input"
+                       [id]="'file-' + format"
+                       type="file"
+                       [accept]="sp.accept"
+                       (change)="onFileInput($event, format)" />
+
+                @if (s.uploadStatus === 'uploading') {
+                  <div class="ae-drop__body">
+                    <span class="ae-spinner ae-spinner--sm" style="border-color:#c7d2fe;border-top-color:var(--ae-brand);"></span>
+                    <p class="ae-drop__name">{{ s.file?.name }}</p>
+                    <p class="ae-drop__meta">Téléversement en cours…</p>
+                  </div>
+                } @else if (s.uploadStatus === 'done') {
+                  <div class="ae-drop__body">
+                    <span class="ae-badge ae-badge--ok">
+                      <app-icon name="check-circle" [size]="14" /> Téléversé
+                    </span>
+                    <p class="ae-drop__name">{{ s.file?.name }}</p>
+                  </div>
+                } @else if (s.file) {
+                  <div class="ae-drop__body">
+                    <span class="ae-badge ae-badge--pending">
+                      <app-icon name="file" [size]="14" /> Prêt à téléverser
+                    </span>
+                    <p class="ae-drop__name">{{ s.file.name }}</p>
+                    <p class="ae-drop__meta">{{ formatBytes(s.file.size) }}</p>
+                  </div>
+                } @else {
+                  <div class="ae-drop__body">
+                    <span class="ae-drop__glyph"><app-icon name="upload" [size]="22" /></span>
+                    <p class="ae-drop__name">Glissez un fichier ici</p>
+                    <p class="ae-drop__meta">ou cliquez pour parcourir · max {{ sp.maxLabel }}</p>
+                  </div>
+                }
+              </label>
+
+              @if (s.error) {
+                <p class="ae-slot__error" role="alert">
+                  <app-icon name="alert" [size]="14" />
+                  <span>{{ s.error }}</span>
+                </p>
+              } @else if (s.uploadStatus === 'failed') {
+                <p class="ae-slot__error" role="alert">
+                  <app-icon name="alert" [size]="14" />
+                  <span>{{ s.uploadError }}</span>
+                </p>
+              }
+
+              <div class="ae-slot__actions">
+                @if (s.uploadStatus === 'failed') {
+                  <button type="button" class="ae-btn ae-btn--tiny" (click)="retryUpload(format)">Réessayer</button>
+                }
+                @if (s.file && s.uploadStatus !== 'uploading' && s.uploadStatus !== 'done') {
+                  <button type="button" class="ae-btn ae-btn--tiny ae-btn--ghost" (click)="clearSlot(format)">
+                    <app-icon name="x" [size]="13" /> Retirer
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- ----------------------------------------------------- footer --- -->
+      @if (submitError()) {
+        <p class="ae-submit-error" role="alert">
+          <app-icon name="alert" [size]="16" />
+          <span>{{ submitError() }}</span>
+        </p>
+      }
+
+      @if (createdArticleId() && hasFailedUpload()) {
+        <div class="ae-submit-error" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+          <span style="display:flex; align-items:center; gap:8px;">
+            <app-icon name="alert" [size]="16" />
+            L'article a été créé, mais certains fichiers n'ont pas pu être téléversés.
+            Réessayez ci-dessus, ou continuez sans eux.
+          </span>
+          <button type="button" class="ae-btn ae-btn--ghost" (click)="goToArticle()">
+            Continuer vers l'article
+          </button>
+        </div>
+      } @else {
+        <footer class="ae-actions">
+          <a routerLink="/dashboard/articles" class="ae-btn ae-btn--ghost">Annuler</a>
+          <button type="submit" class="ae-btn ae-btn--primary" [disabled]="isSubmitting() || !hasPdf()">
+            @if (isSubmitting()) {
+              <span class="ae-spinner ae-spinner--sm"></span> Enregistrement…
+            } @else {
+              <app-icon name="check" [size]="16" />
+              Créer l'article
+            }
+          </button>
+        </footer>
+      }
+    </form>
+  </div>
+</div>

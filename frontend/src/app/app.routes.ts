@@ -127,6 +127,15 @@ export const routes: Routes = [
             {
                 path: 'articles',
                 loadComponent: () => import('./features/article-workflow/article-list/article-list.component').then(m => m.ArticleWorkflowListComponent)
+            },
+            // /dashboard/articles/new -> create-only editor (no edit mode yet).
+            // Declared here so it's ready before ':id' is: a literal 'new'
+            // segment must be registered ahead of a future ':id' route, or the
+            // wildcard would swallow it — same ordering rule as
+            // procedures/new vs procedures/:id above.
+            {
+                path: 'articles/new',
+                loadComponent: () => import('./features/article-workflow/article-editor/article-editor.component').then(m => m.ArticleWorkflowEditorComponent)
             }
         ]
     },

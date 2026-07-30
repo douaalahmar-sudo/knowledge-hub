@@ -88,3 +88,111 @@ export interface UpdateArticlePayload {
 export interface RejectArticlePayload {
   reason: string;
 }
+
+// --------------------------------------------------------------------------
+// Client-side file upload validation (pdf/infographie/video slots).
+// Same caps as ArticleFileFormat::validationRule() server-side
+// (backend/app/Enums/ArticleFileFormat.php) — this exists to fail fast and
+// give a message before a 100 MB body goes over the wire, not to replace the
+// server's own check. Same shape as procedure.model.ts's FormatSpec/
+// validateFile, kept separate rather than shared: the two features' slots
+// happen to have similar rules today, not a real dependency between them.
+// --------------------------------------------------------------------------
+
+export interface ArticleFileFormatSpec {
+  format: ArticleFileFormat;
+  label: string;
+  hint: string;
+  icon: string;
+  /** `accept` attribute for the native file input. */
+  accept: string;
+  /** MIME types the server will actually admit. */
+  mimeTypes: string[];
+  /** Max size in bytes. */
+  maxBytes: number;
+  /** Human-readable size cap, for hints and error messages. */
+  maxLabel: string;
+}
+
+const MB = 1024 * 1024;
+
+export const ARTICLE_FILE_FORMAT_SPECS: Record<ArticleFileFormat, ArticleFileFormatSpec> = {
+  pdf: {
+    format: 'pdf',
+    label: 'PDF',
+    hint: 'Document de référence — obligatoire, source de vérité réglementaire.',
+    icon: 'file',
+    accept: '.pdf,application/pdf',
+    mimeTypes: ['application/pdf'],
+    maxBytes: 20 * MB,
+    maxLabel: '20 Mo',
+  },
+  infographie: {
+    format: 'infographie',
+    label: 'Infographie',
+    hint: 'Schéma de synthèse — PNG, JPEG ou WebP.',
+    icon: 'image',
+    accept: '.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp',
+    mimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+    maxBytes: 10 * MB,
+    maxLabel: '10 Mo',
+  },
+  video: {
+    format: 'video',
+    label: 'Vidéo',
+    hint: 'Tutoriel vidéo — MP4 ou WebM.',
+    icon: 'video',
+    accept: '.mp4,.webm,video/mp4,video/webm',
+    mimeTypes: ['video/mp4', 'video/webm'],
+    maxBytes: 100 * MB,
+    maxLabel: '100 Mo',
+  },
+};
+
+export const ARTICLE_FILE_FORMAT_ORDER: ArticleFileFormat[] = ['pdf', 'infographie', 'video'];
+
+/** Format a byte count for display (1.4 Mo, 812 Ko…). */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < MB) return `${Math.round(bytes / 1024)} Ko`;
+  return `${(bytes / MB).toFixed(1)} Mo`;
+}
+
+/**
+ * Validate a dropped/selected file against its slot.
+ * Returns a French error message, or null when the file is acceptable.
+ *
+ * Note the empty-type fallback: some browsers report `type: ''` for files
+ * dragged from certain sources, so this falls back to the extension rather
+ * than rejecting a legitimate file outright. The server re-checks by
+ * sniffing content, so a spoofed extension still gets caught there.
+ */
+export function validateArticleFile(file: File, spec: ArticleFileFormatSpec): string | null {
+  if (file.size === 0) {
+    return 'Le fichier est vide.';
+  }
+
+  if (file.size > spec.maxBytes) {
+    return `Fichier trop volumineux (${formatBytes(file.size)}). Maximum : ${spec.maxLabel}.`;
+  }
+
+  const declared = (file.type || '').toLowerCase();
+  if (declared) {
+    if (!spec.mimeTypes.includes(declared)) {
+      return `Type de fichier non autorisé (${declared}). Attendu : ${spec.mimeTypes.join(', ')}.`;
+    }
+    return null;
+  }
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const allowedExts = spec.accept
+    .split(',')
+    .filter(part => part.startsWith('.'))
+    .map(part => part.slice(1));
+
+  if (!allowedExts.includes(ext)) {
+    return `Extension non autorisée (.${ext}). Attendu : ${allowedExts.map(e => '.' + e).join(', ')}.`;
+  }
+
+  return null;
+}
