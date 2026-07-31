@@ -1,3 +1,168 @@
 @keyframes kh-spin {
   to { transform: rotate(360deg); }
 }
+
+/* The rest of this page is styled inline (see the template). The search and
+   filter bar is not: it needs :hover / :focus / :focus-visible states, which
+   inline styles cannot express. Same slate + indigo palette as the inline
+   markup and the sibling article-workflow components. */
+
+.kh-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 18px 24px;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 20px;
+  box-shadow: 0 20px 45px -30px rgba(15, 23, 42, 0.35);
+}
+
+/* ---------------------------------------------------------------- search */
+
+.kh-search {
+  position: relative;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.kh-search__icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.kh-search__input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+  color: #0f172a;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &::placeholder { color: #94a3b8; }
+
+  &:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  }
+
+  /* Chrome renders a native clear affordance for type="search"; keep it, but
+     stop it from crowding the text. */
+  &::-webkit-search-cancel-button { margin-left: 4px; }
+}
+
+/* ------------------------------------------------------------ chip groups */
+
+.kh-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kh-group__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.kh-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kh-chip {
+  padding: 7px 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+
+  &:hover { border-color: #c7d2fe; background: #f8fafc; }
+
+  &:focus-visible {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  }
+
+  /* Status chips override background/color inline with that status's own
+     badge palette; this is the fallback for the ones that don't (Tous,
+     and the criticité group). */
+  &--active {
+    border-color: transparent;
+    background: #eef2ff;
+    color: #4338ca;
+  }
+}
+
+/* ----------------------------------------------------------- count/reset */
+
+.kh-filters__foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.kh-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.kh-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+
+  &:hover { border-color: #fca5a5; background: #fef2f2; color: #b91c1c; }
+
+  &:focus-visible {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kh-chip,
+  .kh-reset,
+  .kh-search__input { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .kh-filters { gap: 14px; padding: 16px; }
+  .kh-filters__foot { margin-left: 0; width: 100%; justify-content: space-between; }
+}

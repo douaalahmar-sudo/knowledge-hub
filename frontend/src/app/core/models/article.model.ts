@@ -110,6 +110,21 @@ export const ARTICLE_STATUS_BADGES: Record<ArticleStatus, ArticleStatusBadge> = 
   archived: { label: 'Archivé', background: '#e2e8f0', color: '#334155' },
 };
 
+/**
+ * The five statuses in workflow order, for anything that needs to enumerate
+ * them (the list page's status filter). Same role as
+ * ARTICLE_FILE_FORMAT_ORDER below: `Object.keys(ARTICLE_STATUS_BADGES)` would
+ * return `string[]`, losing the ArticleStatus type, and would tie display
+ * order to an object literal's key order.
+ */
+export const ARTICLE_STATUS_ORDER: ArticleStatus[] = [
+  'draft',
+  'pending_metier',
+  'pending_qualite',
+  'published',
+  'archived',
+];
+
 /** Which `format_*_drive_id` column backs a given file slot. */
 export function articleFileId(article: Article, format: ArticleFileFormat): string | null {
   switch (format) {

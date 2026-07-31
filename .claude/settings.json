@@ -46,7 +46,11 @@
       "Bash(cp src/app/services/auth.service.ts /tmp/auth.bak)",
       "Bash(sed -i 's|    if \\(user.access_role\\) return;|    // MUTATION: guard removed|' src/app/services/auth.service.ts)",
       "Bash(grep -E \"FAILED$|TOTAL:\")",
-      "Bash(grep -A 4 \"FAILED$\")"
+      "Bash(grep -A 4 \"FAILED$\")",
+      "Bash(cp src/app/features/article-workflow/article-list/article-list.component.ts /tmp/list.bak)",
+      "Bash(sed -i \"s|    .replace\\(/\\\\\\\\\\\\\\\\p{Mn}/gu, ''\\)|    // MUTATION: diacritic strip removed|\" src/app/features/article-workflow/article-list/article-list.component.ts)",
+      "Bash(cp /tmp/list.bak src/app/features/article-workflow/article-list/article-list.component.ts)",
+      "Bash(rm -f /tmp/list.bak)"
     ]
   }
 }
