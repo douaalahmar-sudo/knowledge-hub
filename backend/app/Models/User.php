@@ -23,6 +23,19 @@ class User extends Authenticatable
         'access_role',
     ];
 
+    /**
+     * Never serialised into a JSON response.
+     *
+     * Laravel's stock User model ships with this; it had been dropped here, so
+     * every endpoint returning a User — AuthController's login/register/me/SSO
+     * payloads and PersonnelController's directory listings — was handing the
+     * bcrypt hash and the remember token to the client.
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
     protected $casts = [
         'access_role' => UserRole::class,
     ];

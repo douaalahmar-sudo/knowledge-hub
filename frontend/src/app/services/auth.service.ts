@@ -210,6 +210,11 @@ export class AuthService {
       id: payload.user.id,
       name: payload.user.name,
       email: payload.user.email,
+      // The API has always returned this (users.matricule, no $hidden on the
+      // model); it was simply being dropped here. Kept because the article
+      // viewer's watermark identifies the reader by employee id — see
+      // ArticleWorkflowDetailComponent.watermarkText.
+      matricule: payload.user.matricule ?? null,
       role: roleName,
       tenant,
     };

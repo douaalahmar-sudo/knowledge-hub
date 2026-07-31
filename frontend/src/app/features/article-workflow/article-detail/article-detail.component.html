@@ -84,32 +84,72 @@
         }
       </section>
 
-      <section class="ad-card">
-        <div class="ad-card__head">
-          <h2 class="ad-card__title">Formats du triptyque</h2>
-        </div>
+      @if (attachedFormats().length === 0) {
+        <section class="ad-card">
+          <div class="ad-card__head">
+            <h2 class="ad-card__title">Formats du triptyque</h2>
+          </div>
+          <p class="ad-empty">Aucun document n'a encore été joint à cet article.</p>
+        </section>
+      }
 
-        <div class="ad-formats">
-          @for (format of formats; track format) {
-            @let sp = spec(format);
-            @let present = hasFormat(a, format);
+      @for (format of attachedFormats(); track format) {
+        @let sp = spec(format);
+        @let v = viewer(format);
 
-            <div class="ad-format" [class.ad-format--present]="present">
-              <span class="ad-format__icon"><app-icon [name]="sp.icon" [size]="18" /></span>
-              <div>
-                <p class="ad-format__label">{{ sp.label }}</p>
-                <p class="ad-format__status">
-                  @if (present) {
-                    <app-icon name="check-circle" [size]="12" /> Attaché
-                  } @else {
-                    Non fourni
-                  }
-                </p>
+        <section class="ad-card">
+          <div class="ad-card__head ad-card__head--row">
+            <span class="ad-format__icon"><app-icon [name]="sp.icon" [size]="18" /></span>
+            <h2 class="ad-card__title">{{ sp.label }}</h2>
+          </div>
+
+          @if (v.status === 'loading') {
+            <div class="ad-state">
+              <div class="ad-spinner"></div>
+              <p>Chargement du document…</p>
+            </div>
+          } @else if (v.status === 'error') {
+            <div class="ad-state ad-state--error">
+              <app-icon name="alert" [size]="22" />
+              <p>{{ v.error }}</p>
+            </div>
+          } @else {
+            <!-- position:relative anchors the watermark overlay below. -->
+            <div class="ad-frame">
+              @switch (format) {
+                @case ('pdf') {
+                  <iframe
+                    class="ad-frame__pdf"
+                    [src]="v.safeUrl"
+                    [title]="sp.label + ' — ' + a.title"></iframe>
+                }
+                @case ('infographie') {
+                  <img class="ad-frame__img" [src]="v.objectUrl" [alt]="sp.label + ' — ' + a.title" />
+                }
+                @case ('video') {
+                  <!-- controlsList/disablePictureInPicture close the obvious
+                       download + PiP affordances. Neither is a security
+                       boundary; play/pause/seek stay available on purpose. -->
+                  <video
+                    class="ad-frame__video"
+                    [src]="v.objectUrl"
+                    controls
+                    controlsList="nodownload noplaybackrate"
+                    disablePictureInPicture></video>
+                }
+              }
+
+              <!-- pointer-events:none — the document underneath stays fully
+                   scrollable/seekable through this overlay. -->
+              <div class="ad-watermark" aria-hidden="true">
+                @for (i of watermarkRepeats; track i) {
+                  <span class="ad-watermark__line">{{ watermarkText() }}</span>
+                }
               </div>
             </div>
           }
-        </div>
-      </section>
+        </section>
+      }
     }
 
   </div>

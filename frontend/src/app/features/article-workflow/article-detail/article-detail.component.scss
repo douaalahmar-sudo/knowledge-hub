@@ -160,24 +160,12 @@
   font-weight: 600;
 }
 
-/* ------------------------------------------------------------- 3 formats */
+/* ---------------------------------------------------------------- viewer */
 
-.ad-formats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-}
-
-.ad-format {
+.ad-card__head--row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--ad-line);
-  border-radius: 16px;
-  background: #fff;
-
-  &--present { border-color: #a7f3d0; background: #f8fffb; }
+  gap: 10px;
 }
 
 .ad-format__icon {
@@ -192,25 +180,75 @@
   color: var(--ad-brand);
 }
 
-.ad-format--present .ad-format__icon {
-  background: var(--ad-ok-soft);
-  color: var(--ad-ok);
+/* Anchors the absolutely-positioned watermark. `overflow: hidden` keeps the
+   oversized, rotated overlay from spilling outside the rounded frame. */
+.ad-frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--ad-line);
+  border-radius: 16px;
+  background: #f8fafc;
+  line-height: 0; /* kills the inline-element gap under img/video */
 }
 
-.ad-format__label {
-  margin: 0;
-  font-size: 14px;
+.ad-frame__pdf {
+  display: block;
+  width: 100%;
+  height: 70vh;
+  min-height: 420px;
+  border: 0;
+}
+
+.ad-frame__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 80vh;
+  object-fit: contain;
+  background: #fff;
+}
+
+.ad-frame__video {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+}
+
+/* ------------------------------------------------------------- watermark */
+
+/* Oversized + rotated so the tiled text still covers the frame's corners.
+   pointer-events:none is what keeps the PDF scrollable and the video seekable
+   underneath; user-select:none stops the text joining a page copy. */
+.ad-watermark {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 44px 60px;
+  transform: rotate(-30deg);
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+}
+
+.ad-watermark__line {
+  font-size: 13px;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: rgba(15, 23, 42, 0.14);
 }
 
-.ad-format__status {
-  margin: 2px 0 0;
-  font-size: 12px;
-  font-weight: 600;
+/* The PDF and video panels render dark/photographic content, so a dark
+   watermark disappears against them — invert it there. */
+.ad-frame:has(.ad-frame__video) .ad-watermark__line {
+  color: rgba(255, 255, 255, 0.22);
 }
-
-.ad-format--present .ad-format__status { color: var(--ad-ok); }
-.ad-format:not(.ad-format--present) .ad-format__status { color: var(--ad-muted); }
 
 /* --------------------------------------------------------------- states */
 

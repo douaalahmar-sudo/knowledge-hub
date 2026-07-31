@@ -35,7 +35,12 @@
       "Bash(rm -f \"C:/Users/MSI/AppData/Local/Temp/claude/c--Users-MSI-Desktop-knowledge-hub/09f2d651-d0a2-4ded-9b34-ae5f965abb83/scratchpad/verify_sequential_upload.js\")",
       "Bash(rm -rf \"c:/Users/MSI/Desktop/knowledge-hub/frontend/dist\")",
       "Bash(mv \"c:/Users/MSI/Desktop/knowledge-hub/frontend/src/app/app.component.spec.ts.aside\" \"c:/Users/MSI/Desktop/knowledge-hub/frontend/src/app/app.component.spec.ts\")",
-      "Bash(mv \"c:/Users/MSI/Desktop/knowledge-hub/frontend/src/app/components/layout-shell/layout-shell.component.spec.ts.aside\" \"c:/Users/MSI/Desktop/knowledge-hub/frontend/src/app/components/layout-shell/layout-shell.component.spec.ts\")"
+      "Bash(mv \"c:/Users/MSI/Desktop/knowledge-hub/frontend/src/app/components/layout-shell/layout-shell.component.spec.ts.aside\" \"c:/Users/MSI/Desktop/knowledge-hub/frontend/src/app/components/layout-shell/layout-shell.component.spec.ts\")",
+      "Bash(rm -rf dist)",
+      "Bash(mv src/app/app.component.spec.ts src/app/app.component.spec.ts.aside)",
+      "Bash(mv src/app/components/layout-shell/layout-shell.component.spec.ts src/app/components/layout-shell/layout-shell.component.spec.ts.aside)",
+      "Bash(mv src/app/app.component.spec.ts.aside src/app/app.component.spec.ts)",
+      "Bash(mv src/app/components/layout-shell/layout-shell.component.spec.ts.aside src/app/components/layout-shell/layout-shell.component.spec.ts)"
     ]
   }
 }
