@@ -49,6 +49,29 @@
         <span class="nav-label">Base de connaissances</span>
       </a>
 
+      <!-- Articles (workflow de validation) -->
+      <a routerLink="/dashboard/articles"
+         routerLinkActive="active"
+         [routerLinkActiveOptions]="{ exact: true }"
+         class="nav-item">
+        <span class="nav-active-bar"></span>
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9h4"/><path d="M10 6h8"/><path d="M10 10h8"/><path d="M10 14h5"/></svg>
+        <span class="nav-label">Articles</span>
+      </a>
+
+      <!-- File de validation — access_role-gated (responsable_departement /
+           qualite / admin), NOT canSee(), which resolves the legacy roles
+           table. See LayoutShellComponent.canValidateArticles. -->
+      @if (canValidateArticles()) {
+      <a routerLink="/dashboard/articles/validation"
+         routerLinkActive="active"
+         class="nav-item">
+        <span class="nav-active-bar"></span>
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 11 2 2 4-4"/></svg>
+        <span class="nav-label">File de validation</span>
+      </a>
+      }
+
       <!-- Mes demandes RH -->
       <a routerLink="/dashboard/hr-requests"
          routerLinkActive="active"

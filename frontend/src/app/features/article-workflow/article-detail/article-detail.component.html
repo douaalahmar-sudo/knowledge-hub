@@ -114,8 +114,10 @@
               <p>{{ v.error }}</p>
             </div>
           } @else {
-            <!-- position:relative anchors the watermark overlay below. -->
-            <div class="ad-frame">
+            <!-- position:relative anchors the watermark overlay below.
+                 appBlockContextMenu scopes right-click suppression to just the
+                 document content — page navigation outside this stays normal. -->
+            <div class="ad-frame" appBlockContextMenu>
               @switch (format) {
                 @case ('pdf') {
                   <iframe

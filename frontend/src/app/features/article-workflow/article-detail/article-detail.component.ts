@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -14,6 +14,7 @@ import {
   articleFileId,
 } from '../../../core/models/article.model';
 import { AuthService } from '../../../services/auth.service';
+import { BlockContextMenuDirective } from '../../../shared/directives/block-context-menu.directive';
 import { IconComponent } from '../../../shared/icon/icon.component';
 
 type LoadState = 'loading' | 'loaded' | 'not-found' | 'error';
@@ -58,7 +59,7 @@ const WATERMARK_REPEATS = 28;
 @Component({
   selector: 'app-article-workflow-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, IconComponent],
+  imports: [CommonModule, RouterModule, IconComponent, BlockContextMenuDirective],
   templateUrl: './article-detail.component.html',
   styleUrl: './article-detail.component.scss',
 })
@@ -117,16 +118,9 @@ export class ArticleWorkflowDetailComponent implements OnInit, OnDestroy {
   /** Kept for retry(): `article()` is still null while state is 'error'. */
   private articleId: string | null = null;
 
-  /**
-   * Closes the obvious "save image/video as…" affordance across the page.
-   * Explicitly NOT a security boundary — devtools, the network tab and the
-   * blob URL itself all remain reachable. It exists because the spec asks for
-   * it, in the same spirit as controlsList="nodownload" on the video.
-   */
-  @HostListener('contextmenu', ['$event'])
-  onContextMenu(event: MouseEvent): void {
-    event.preventDefault();
-  }
+  // Right-click suppression lives on the viewer frames themselves, via
+  // appBlockContextMenu in the template — deliberately not on this host, so
+  // the back link and the rest of the page keep normal right-click behaviour.
 
   ngOnInit(): void {
     this.articleId = this.route.snapshot.paramMap.get('id');

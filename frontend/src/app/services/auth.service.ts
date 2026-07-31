@@ -21,6 +21,24 @@ export type DemoRole =
   | 'hr_admin'
   | 'hr_user';
 
+/**
+ * The `users.access_role` enum (App\Enums\UserRole) — the *other*, newer role
+ * dimension, deliberately separate from DemoRole above (which mirrors the
+ * legacy `roles` table read via `user.role.name`). A user carries both at
+ * once, and they are not interchangeable: the article workflow Gates
+ * (create-articles, validate-metier, validate-qualite in AppServiceProvider)
+ * are all defined on `access_role`, while CheckRole and every existing route
+ * guard still key off DemoRole. Use `hasAccessRole()` for the former,
+ * `canAccess()`/`inGroup()` for the latter.
+ */
+export type AccessRole =
+  | 'redacteur'
+  | 'responsable_departement'
+  | 'qualite'
+  | 'data_owner'
+  | 'admin'
+  | 'lecteur';
+
 // Real credential checking now happens server-side (POST /v1/auth/login).
 // This tenant object is only still needed as the placeholder tenant register()
 // assigns to a brand-new local-only signup session.
@@ -78,6 +96,15 @@ export class AuthService {
   role = computed<string | null>(() => this.currentUser()?.role ?? null);
 
   /**
+   * Current `access_role` (see AccessRole), or null. Null for a session cached
+   * before this field started being persisted, and for the local-only
+   * register() path which never had one — treat null as "no article-workflow
+   * privileges" rather than guessing, since the server is the real authority
+   * on every one of these Gates anyway.
+   */
+  accessRole = computed<AccessRole | null>(() => this.currentUser()?.access_role ?? null);
+
+  /**
    * Reads the cached session, rejecting it if the role doesn't match a known
    * DemoRole (e.g. a session saved under a previous role scheme, such as the
    * old SUPER_ADMIN/HR_ADMIN/EMPLOYEE set). An unrecognized role would
@@ -96,6 +123,57 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * One-shot repair for sessions cached before `access_role` started being
+   * persisted (see establishApiSession). Those users hold a perfectly valid
+   * token but a session object with no access_role, which reads as "no
+   * article-workflow privileges" and silently hides the validation queue and
+   * its actions until they log out and back in.
+   *
+   * Called once at bootstrap from app.config.ts. Deliberately NOT blocking:
+   * the initializer subscribes and returns immediately, so a slow or dead API
+   * can't hold up the first paint. `accessRole` is a signal, so the affected
+   * UI (the sidebar entry, the per-row action buttons) simply appears when the
+   * response lands.
+   *
+   * Fires at most one request per app load, and only when there is something
+   * to repair — see the three guards below.
+   */
+  backfillAccessRole(): void {
+    const user = this.currentUser();
+
+    // No session to repair: logged out, or a token with no cached user.
+    if (!this.token() || !user) return;
+
+    // THE redundancy guard: any session established since access_role started
+    // being persisted already carries it, so a normal login is followed by
+    // zero /me traffic. The column is NOT NULL with a 'lecteur' default
+    // server-side, so a present value is never empty — truthiness is a safe
+    // test for "already backfilled".
+    if (user.access_role) return;
+
+    this.http.get<{ user: any }>(`${environment.apiUrl}/v1/auth/me`).subscribe({
+      next: payload => {
+        const accessRole = (payload?.user?.access_role ?? null) as AccessRole | null;
+        if (!accessRole) return;
+
+        // Merge rather than replace: this only owns the one missing field, and
+        // must not clobber `tenant`/`matricule`/anything else the live session
+        // is already carrying.
+        const merged = { ...this.currentUser(), access_role: accessRole };
+
+        localStorage.setItem('current_user', JSON.stringify(merged));
+        this.currentUser.set(merged);
+      },
+      // Best-effort repair, not an auth check — swallow. A 401 here means the
+      // token is dead, but every guarded request the user makes will hit the
+      // same 401 and the auth guard handles that; tearing down the session
+      // from a background bootstrap call would turn a cosmetic gap into a
+      // surprise logout on a transient network blip.
+      error: () => {},
+    });
   }
 
   /**
@@ -164,6 +242,21 @@ export class AuthService {
   }
 
   /**
+   * Whether the current `access_role` is one of `allowedRoles` — the
+   * access_role counterpart of canAccess(), for UI gated on the article
+   * workflow Gates. `admin` always passes, matching how every one of those
+   * Gates lists 'admin' explicitly server-side.
+   *
+   * This is UI affordance only: hiding a button never authorizes anything, and
+   * ArticleController re-checks each Gate on its own.
+   */
+  hasAccessRole(allowedRoles: AccessRole[]): boolean {
+    const r = this.accessRole();
+    if (!r) return false;
+    return r === 'admin' || allowedRoles.includes(r);
+  }
+
+  /**
    * Whether the current role belongs to the given coarse permission group
    * (see PermissionGroup/ROLE_GROUPS above). `admin` always passes, mirroring
    * the same bypass semantics as canAccess().
@@ -216,6 +309,12 @@ export class AuthService {
       // ArticleWorkflowDetailComponent.watermarkText.
       matricule: payload.user.matricule ?? null,
       role: roleName,
+      // The second, independent role dimension (see AccessRole). Also always
+      // returned by the API — `access_role` is fillable and not $hidden on the
+      // User model, and the column is NOT NULL with a 'lecteur' default — it
+      // was simply being dropped here, same as matricule was. The article
+      // workflow UI reads it via accessRole()/hasAccessRole().
+      access_role: (payload.user.access_role ?? null) as AccessRole | null,
       tenant,
     };
 

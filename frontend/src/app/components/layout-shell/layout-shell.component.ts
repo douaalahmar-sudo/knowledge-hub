@@ -53,6 +53,17 @@ export class LayoutShellComponent
         return this.auth.canAccess(roles);
     }
 
+    /**
+     * Whether to show the article validation queue. Keyed on `access_role`
+     * (hasAccessRole), not on canSee()/the legacy roles table: the
+     * validate-metier and validate-qualite Gates behind that page are both
+     * defined on access_role, and the two role sets don't line up — 'qualite'
+     * has no legacy-role equivalent at all. Admin passes via hasAccessRole.
+     */
+    canValidateArticles = computed<boolean>(() =>
+        this.auth.hasAccessRole(['responsable_departement', 'qualite'])
+    );
+
     handleLogout(): void
     {
         this.auth.logout().subscribe({

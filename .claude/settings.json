@@ -40,7 +40,13 @@
       "Bash(mv src/app/app.component.spec.ts src/app/app.component.spec.ts.aside)",
       "Bash(mv src/app/components/layout-shell/layout-shell.component.spec.ts src/app/components/layout-shell/layout-shell.component.spec.ts.aside)",
       "Bash(mv src/app/app.component.spec.ts.aside src/app/app.component.spec.ts)",
-      "Bash(mv src/app/components/layout-shell/layout-shell.component.spec.ts.aside src/app/components/layout-shell/layout-shell.component.spec.ts)"
+      "Bash(mv src/app/components/layout-shell/layout-shell.component.spec.ts.aside src/app/components/layout-shell/layout-shell.component.spec.ts)",
+      "Bash(echo \"TSC EXIT: $?\")",
+      "Bash(grep -n \"case '\\\\|name ===\\\\|: \\\\`<svg\" shared/icon/icon.component.ts)",
+      "Bash(cp src/app/services/auth.service.ts /tmp/auth.bak)",
+      "Bash(sed -i 's|    if \\(user.access_role\\) return;|    // MUTATION: guard removed|' src/app/services/auth.service.ts)",
+      "Bash(grep -E \"FAILED$|TOTAL:\")",
+      "Bash(grep -A 4 \"FAILED$\")"
     ]
   }
 }

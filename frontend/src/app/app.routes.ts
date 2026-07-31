@@ -135,6 +135,22 @@ export const routes: Routes = [
                 path: 'articles/new',
                 loadComponent: () => import('./features/article-workflow/article-editor/article-editor.component').then(m => m.ArticleWorkflowEditorComponent)
             },
+            // /dashboard/articles/validation -> validation queue (pending_metier
+            // + pending_qualite). Literal segment, so same ordering rule as
+            // 'new' above: it must precede ':id'.
+            //
+            // No roleGuard, and deliberately so — roleGuard/canAccess resolve
+            // the legacy `roles`-table role, whereas the validate-metier and
+            // validate-qualite Gates this page drives are defined on the
+            // separate `access_role` column. Gating the route on the wrong role
+            // dimension would be worse than not gating it: the queue itself
+            // shows nothing a user can't already see at /dashboard/articles,
+            // and the per-row actions are hidden by access_role in the
+            // component (and re-checked server-side regardless).
+            {
+                path: 'articles/validation',
+                loadComponent: () => import('./features/article-workflow/article-validation/article-validation.component').then(m => m.ArticleWorkflowValidationComponent)
+            },
             // /dashboard/articles/:id -> read-only detail (layout + data only;
             // no viewer yet, no workflow actions yet). List and editor already
             // link here.

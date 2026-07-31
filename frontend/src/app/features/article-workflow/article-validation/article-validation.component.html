@@ -1,0 +1,177 @@
+<div class="av-page">
+  <div class="av-shell">
+
+    <a routerLink="/dashboard/articles" class="av-back">
+      <app-icon name="arrow-left" [size]="15" />
+      <span>Retour aux articles</span>
+    </a>
+
+    <header>
+      <p class="av-eyebrow">Knowledge Hub</p>
+      <h1 class="av-title">File de validation</h1>
+      <p class="av-subtitle">
+        @if (isValidator()) {
+          Articles en attente de validation métier ou qualité. Validez pour les faire
+          avancer dans le workflow, ou rejetez-les en indiquant un motif — l'article
+          repart alors en brouillon chez son auteur.
+        } @else {
+          Articles en attente de validation métier ou qualité. Votre rôle ne permet
+          pas d'agir sur ces étapes : cette page est consultable en lecture seule.
+        }
+      </p>
+    </header>
+
+    <!-- Confirmation after a validate/reject. Transient — disparaît seule. -->
+    @if (successMessage()) {
+      <p class="av-banner av-banner--ok" role="status">
+        <app-icon name="check-circle" [size]="17" />
+        <span>{{ successMessage() }}</span>
+      </p>
+    }
+
+    <!-- Action failure (403 wrong role, 422 wrong state, network...). The list
+         is untouched in that case, so the row stays and can be retried. -->
+    @if (actionError()) {
+      <p class="av-banner av-banner--error" role="alert">
+        <app-icon name="alert" [size]="17" />
+        <span>{{ actionError() }}</span>
+      </p>
+    }
+
+    @if (isLoading()) {
+      <div class="av-card av-state">
+        <div class="av-spinner"></div>
+        <p>Chargement de la file de validation…</p>
+      </div>
+    } @else if (errorMessage()) {
+      <div class="av-card av-state av-state--error">
+        <app-icon name="alert" [size]="26" />
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="av-btn av-btn--primary" (click)="loadQueue()">
+          Réessayer
+        </button>
+      </div>
+    } @else if (articles().length === 0) {
+      <div class="av-card av-state">
+        <span class="av-state__glyph">
+          <app-icon name="inbox" [size]="26" />
+        </span>
+        <h3 class="av-state__title">Rien en attente</h3>
+        <p>Aucun article n'attend de validation pour le moment.</p>
+      </div>
+    } @else {
+      <ul class="av-rows">
+        @for (article of articles(); track article.id) {
+          <li class="av-row" [class.av-row--busy]="busyId() === article.id">
+
+            <div class="av-row__main">
+              <div class="av-row__tags">
+                <span
+                  class="av-badge"
+                  [style.background-color]="statusBadge(article.status).background"
+                  [style.color]="statusBadge(article.status).color"
+                >
+                  {{ statusBadge(article.status).label }}
+                </span>
+
+                @if (isGoldenRule(article)) {
+                  <span class="av-badge av-badge--gold">
+                    <app-icon name="star" [size]="13" />
+                    Règle d'or
+                  </span>
+                }
+              </div>
+
+              <a [routerLink]="['/dashboard/articles', article.id]" class="av-row__title">
+                {{ article.title }}
+              </a>
+
+              <div class="av-row__meta">
+                <span>
+                  <app-icon name="user" [size]="14" />
+                  {{ article.author.name }}
+                </span>
+                <!-- No `submitted_at` column exists; `updated_at` is the last
+                     workflow transition, which for a pending article is its
+                     submission (or its last rejection-and-resubmission). -->
+                <span>
+                  <app-icon name="clock" [size]="14" />
+                  En attente depuis le {{ article.updated_at | date: 'dd/MM/yyyy HH:mm' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- No actions at all when the stage doesn't match the user's
+                 access_role — the row still renders, read-only. -->
+            @if (canAct(article)) {
+              <div class="av-row__actions">
+                <button
+                  type="button"
+                  class="av-btn av-btn--ok"
+                  [disabled]="busyId() === article.id"
+                  (click)="validate(article)"
+                >
+                  <app-icon name="check" [size]="15" />
+                  {{ validateLabel(article) }}
+                </button>
+
+                <button
+                  type="button"
+                  class="av-btn av-btn--danger"
+                  [disabled]="busyId() === article.id"
+                  (click)="openReject(article)"
+                >
+                  <app-icon name="x" [size]="15" />
+                  Rejeter
+                </button>
+              </div>
+            }
+
+            <!-- Inline reason box rather than a modal: the motif is required by
+                 the API and is shown to the author, so it wants a real textarea. -->
+            @if (rejectingId() === article.id) {
+              <div class="av-reject">
+                <label [attr.for]="'reject-reason-' + article.id">
+                  Motif du rejet <span class="av-req">*</span>
+                </label>
+                <textarea
+                  [id]="'reject-reason-' + article.id"
+                  rows="3"
+                  placeholder="Ce qui doit être corrigé avant une nouvelle soumission…"
+                  [(ngModel)]="rejectReason"
+                  [disabled]="busyId() === article.id"
+                ></textarea>
+                <p class="av-help">
+                  L'article repassera en brouillon chez {{ article.author.name }}.
+                </p>
+                <div class="av-reject__actions">
+                  <button
+                    type="button"
+                    class="av-btn av-btn--ghost"
+                    [disabled]="busyId() === article.id"
+                    (click)="closeReject()"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    class="av-btn av-btn--danger"
+                    [disabled]="busyId() === article.id"
+                    (click)="confirmReject(article)"
+                  >
+                    @if (busyId() === article.id) {
+                      <span class="av-spinner av-spinner--sm"></span>
+                    }
+                    Confirmer le rejet
+                  </button>
+                </div>
+              </div>
+            }
+
+          </li>
+        }
+      </ul>
+    }
+
+  </div>
+</div>
