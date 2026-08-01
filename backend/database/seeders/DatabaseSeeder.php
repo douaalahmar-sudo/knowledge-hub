@@ -141,54 +141,90 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        // 5. Knowledge Base articles, one per official category (+ an extra policy doc).
-        // `slug` is the route key (see Article::getRouteKeyName) so it's the natural
-        // uniqueness key for firstOrCreate here.
+        // 5. Articles for the validation workflow.
+        //
+        // This block used to write the OLD knowledge-base columns (summary /
+        // content / category / tags / reading_time_minutes). The `articles`
+        // table was since recreated for the workflow schema — see
+        // 2026_07_31_000001_recreate_articles_table_for_workflow — so those
+        // columns no longer exist, and `tags` isn't in Article::$casts either,
+        // so the seeder died on "Array to string conversion" at PDO bind time
+        // before Postgres ever saw the query. Rewritten against the real
+        // columns. (Nothing is lost: the legacy knowledge-base pages under
+        // features/articles/ read the localStorage-backed mock ArticleService,
+        // not this table.)
+        //
+        // `slug` is the route key (see Article::getRouteKeyName) so it's the
+        // natural uniqueness key for firstOrCreate here.
+        //
+        // Statuses are spread deliberately: a freshly seeded environment needs
+        // something in every workflow state, and in particular in
+        // pending_metier and pending_qualite — without those the validation
+        // queue (/dashboard/articles/validation) renders its empty state and
+        // the feature cannot be demonstrated or reviewed at all.
         $articleSeeds = [
             [
-                'slug'     => 'bienvenue-chez-flesk-guide-de-demarrage',
-                'title'    => 'Bienvenue chez FLESK — Guide de démarrage',
-                'summary'  => 'Tout ce qu’un nouveau collaborateur doit savoir pour bien démarrer.',
-                'content'  => '<h2>Bienvenue !</h2><p>Ce guide couvre vos premiers pas : accès, badges, et contacts utiles.</p>',
-                'category' => 'onboarding_guides',
-                'tags'     => ['onboarding', 'accueil'],
-                'author'   => 'hr_admin',
+                'slug'      => 'procedure-ouverture-de-caisse',
+                'title'     => "Procédure d'ouverture de caisse",
+                'summary'   => "Étapes d'ouverture et de comptage du fonds de caisse.",
+                'tags'      => ['caisse', 'ouverture'],
+                'criticite' => 'golden_rule',
+                'status'    => 'pending_metier',
+                'author'    => 'expert_metier',
             ],
             [
-                'slug'     => 'nouvelle-politique-de-conges-2026',
-                'title'    => 'Nouvelle politique de congés 2026',
-                'summary'  => 'Mise à jour des règles de congés payés et RTT applicables cette année.',
-                'content'  => '<h2>Congés 2026</h2><p>Les nouvelles règles entrent en vigueur au 1er janvier.</p>',
-                'category' => 'policies_guidelines',
-                'tags'     => ['rh', 'congés', 'politique'],
-                'author'   => 'hr_admin',
+                'slug'      => 'controle-qualite-des-receptions',
+                'title'     => 'Contrôle qualité des réceptions',
+                'summary'   => 'Vérification des marchandises à la livraison.',
+                'tags'      => ['réception', 'qualité'],
+                'criticite' => 'note',
+                'status'    => 'pending_metier',
+                'author'    => 'expert_metier',
             ],
             [
-                'slug'     => 'annonce-ouverture-store-101-tunis',
-                'title'    => 'Annonce : ouverture du Store #101 à Tunis',
-                'summary'  => 'Notre nouveau magasin ouvre ses portes ce mois-ci.',
-                'content'  => '<p>Nous sommes fiers d’annoncer l’ouverture du Store #101 à Tunis.</p>',
-                'category' => 'news_announcements',
-                'tags'     => ['annonce', 'magasin'],
-                'author'   => 'admin',
+                'slug'      => 'gestion-des-dechets-en-magasin',
+                'title'     => 'Gestion des déchets en magasin',
+                'summary'   => 'Tri et évacuation des déchets par filière.',
+                'tags'      => ['environnement'],
+                'criticite' => 'note',
+                'status'    => 'pending_qualite',
+                'author'    => 'expert_metier',
             ],
             [
-                'slug'     => 'formulaires-rh-mode-demploi',
-                'title'    => 'Formulaires RH : mode d’emploi',
-                'summary'  => 'Où trouver et comment soumettre vos documents RH courants.',
-                'content'  => '<h2>Formulaires disponibles</h2><p>Fiche de paie, attestation de travail, demande de congé.</p>',
-                'category' => 'hr_documentation',
-                'tags'     => ['rh', 'formulaires', 'documents'],
-                'author'   => 'hr_admin',
+                'slug'      => 'securite-incendie-evacuation',
+                'title'     => 'Sécurité incendie : évacuation',
+                'summary'   => "Consignes d'évacuation et points de rassemblement.",
+                'tags'      => ['sécurité', 'incendie'],
+                'criticite' => 'golden_rule',
+                'status'    => 'pending_qualite',
+                'author'    => 'admin',
             ],
             [
-                'slug'     => 'charte-informatique-bonnes-pratiques-securite',
-                'title'    => 'Charte informatique & bonnes pratiques de sécurité',
-                'summary'  => 'Règles d’usage des outils numériques et protection des données.',
-                'content'  => '<h2>Sécurité au quotidien</h2><p>Verrouillez votre session, signalez les emails suspects.</p>',
-                'category' => 'policies_guidelines',
-                'tags'     => ['sécurité', 'informatique', 'conformité'],
-                'author'   => 'admin',
+                'slug'      => 'accueil-client-les-fondamentaux',
+                'title'     => 'Accueil client : les fondamentaux',
+                'summary'   => "Les gestes clés de l'accueil en magasin.",
+                'tags'      => ['client', 'accueil'],
+                'criticite' => 'note',
+                'status'    => 'published',
+                'author'    => 'expert_metier',
+            ],
+            [
+                'slug'      => 'inventaire-tournant-hebdomadaire',
+                'title'     => 'Inventaire tournant hebdomadaire',
+                'summary'   => 'Méthode de comptage tournant par zone.',
+                'tags'      => ['stock', 'inventaire'],
+                'criticite' => 'note',
+                'status'    => 'draft',
+                'author'    => 'expert_metier',
+            ],
+            [
+                'slug'      => 'regles-hygiene-alimentaire',
+                'title'     => "Règles d'hygiène alimentaire",
+                'summary'   => 'Chaîne du froid et dates limites de consommation.',
+                'tags'      => ['hygiène', 'alimentaire'],
+                'criticite' => 'golden_rule',
+                'status'    => 'draft',
+                'author'    => 'admin',
             ],
         ];
 
@@ -196,16 +232,17 @@ class DatabaseSeeder extends Seeder
             Article::firstOrCreate(
                 ['slug' => $a['slug']],
                 [
-                    'filiale_id'           => $store101->id,
-                    'author_id'            => $users[$a['author']]->id,
-                    'title'                => $a['title'],
-                    'summary'              => $a['summary'],
-                    'content'              => $a['content'],
-                    'category'             => $a['category'],
-                    'tags'                 => $a['tags'],
-                    'status'               => 'published',
-                    'published_at'         => now(),
-                    'reading_time_minutes' => 2,
+                    'filiale_id'      => $store101->id,
+                    'author_id'       => $users[$a['author']]->id,
+                    // Reassignable later; defaults to the author, same rule as
+                    // ArticleController::store().
+                    'data_owner_id'   => $users[$a['author']]->id,
+                    'title'           => $a['title'],
+                    'content_summary' => $a['summary'],
+                    'tags_metier'     => $a['tags'],
+                    'criticite'       => $a['criticite'],
+                    'status'          => $a['status'],
+                    'published_at'    => $a['status'] === 'published' ? now() : null,
                 ]
             );
         }

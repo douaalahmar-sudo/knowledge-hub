@@ -19,7 +19,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
     && sed -ri 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf \
-    && a2enmod rewrite
+    && a2enmod rewrite \
+    # Debian's apache2.conf ships `AllowOverride None`, which makes Apache
+    # ignore public/.htaccess altogether. mod_rewrite then loads but is never
+    # given any rules, so `/` resolves via DirectoryIndex while every other
+    # path — the entire /api surface — 404s at Apache before reaching Laravel.
+    # conf-enabled/ is included after the stock <Directory> blocks, so this
+    # wins without editing them.
+    && printf '<Directory %s>\n    AllowOverride All\n    Require all granted\n</Directory>\n' \
+        "$APACHE_DOCUMENT_ROOT" > /etc/apache2/conf-available/laravel.conf \
+    && a2enconf laravel
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html

@@ -7,6 +7,10 @@ vendor/
 node_modules/
 storage/logs/*
 storage/framework/cache/*
+# A locally generated bootstrap/cache/config.php would be baked into the image
+# and silently override EVERY environment variable set on the host — the
+# hardest possible version of the "wrong database" bug to diagnose.
+bootstrap/cache/*.php
 storage/framework/sessions/*
 storage/framework/views/*
 tests/

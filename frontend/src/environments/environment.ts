@@ -8,12 +8,11 @@
  * injoignable" for everyone but you. It must also be https, or the browser
  * blocks the call as mixed content on the https:// workers.dev page.
  *
- * >>> Replace the host below with your Render service URL once it exists. <<<
- * Keep the /api suffix — every route is registered under that prefix
- * (backend/routes/api.php), e.g. https://knowledge-hub-api.onrender.com/api
+ * The /api suffix matters — every route is registered under that prefix
+ * (backend/routes/api.php).
  */
 export const environment =
 {
     production: true,
-    apiUrl: 'https://REPLACE-ME.onrender.com/api'
+    apiUrl: 'https://knowledge-hub-api-gf6v.onrender.com/api'
 };
