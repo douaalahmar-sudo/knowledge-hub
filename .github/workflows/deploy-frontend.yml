@@ -1,0 +1,54 @@
+name: Deploy frontend to Cloudflare
+
+# Every push that touches the frontend rebuilds and redeploys, so managers see
+# your work without you running anything by hand. The backend is NOT deployed
+# here: connect the repo to Railway once and it redeploys itself on push.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fails the job (and so blocks the deploy) on any compile or template
+      # type error — the guard that stops a broken bundle reaching managers.
+      - name: Build
+        run: npx ng build --configuration production
+
+      # Refuses to ship a bundle still pointing at the placeholder API host,
+      # which would deploy green and then fail at login for everyone. Matches
+      # the marker rather than a specific host, so it keeps working if the API
+      # moves to another provider.
+      - name: Check the API URL was configured
+        run: |
+          if grep -rq "REPLACE-ME" dist/frontend/browser; then
+            echo "::error::environment.ts still contains the placeholder API URL."
+            echo "Set it to your deployed API URL and commit before deploying."
+            exit 1
+          fi
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: frontend

@@ -1,0 +1,16 @@
+# Never bake local secrets or host-built artifacts into the image.
+.env
+.env.*
+!.env.example
+
+vendor/
+node_modules/
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+tests/
+.phpunit.result.cache
+.git/
+.gitignore
+README.md

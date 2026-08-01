@@ -1,0 +1,53 @@
+# Render blueprint — https://render.com/docs/blueprint-spec
+#
+# Render reads this on "New > Blueprint" and creates the service preconfigured.
+# The same backend/Dockerfile is used as-is; nothing here is Render-specific
+# beyond this file, so moving hosts again later only means changing DB_URL and
+# the frontend's apiUrl.
+#
+# NOTE: no database is declared here on purpose. Render's own free Postgres is
+# time-limited and is deleted when it expires, which would silently take your
+# data with it. Point DB_URL at a free Postgres that persists instead (Neon or
+# Supabase) — see the setup notes in the chat. Verify current free-tier terms
+# before relying on either; they change.
+services:
+  - type: web
+    name: knowledge-hub-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    # Closest region to Tunisia of the ones Render offers.
+    region: frankfurt
+
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+
+      # Generate locally with `php artisan key:generate --show` and paste it in
+      # the Render dashboard. sync:false means "prompt me, don't store in git".
+      - key: APP_KEY
+        sync: false
+
+      # Your own https://<service>.onrender.com URL, once Render assigns it.
+      - key: APP_URL
+        sync: false
+
+      - key: DB_CONNECTION
+        value: pgsql
+      # Full Postgres connection string, e.g. the one Neon gives you:
+      #   postgresql://user:pass@host/dbname?sslmode=require
+      # config/database.php reads it as `url` on the pgsql connection, so this
+      # single variable replaces DB_HOST/PORT/DATABASE/USERNAME/PASSWORD.
+      - key: DB_URL
+        sync: false
+
+      # Comma-separated, no trailing slash, scheme included — read by
+      # config/cors.php. Must list the deployed frontend's exact origin.
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://azizahub.contact-268.workers.dev
+
+      - key: LOG_CHANNEL
+        value: stderr

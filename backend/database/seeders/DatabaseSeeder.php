@@ -57,16 +57,29 @@ class DatabaseSeeder extends Seeder
         // (filiale-agnostic, "global business validation above store level" rather
         // than scoped like Manager/Operator). See the flag below this array for the
         // consequence of that choice under the current isolation implementation.
+        // `access_role` is the SECOND, independent role dimension (App\Enums\UserRole),
+        // and it is the one every article-workflow Gate is defined on —
+        // create-articles, validate-metier, validate-qualite (AppServiceProvider).
+        // It was previously left unset here, so all nine demo accounts fell to the
+        // column's 'lecteur' default and the whole article workflow was unusable on
+        // a freshly seeded database: nobody could create, validate or even see a
+        // non-published article. It is distinct from `role` above (the legacy
+        // `roles` table) on purpose — see the migration adding the column.
         $demoUsers = [
-            ['email' => 'admin@flesk.com',        'name' => 'Sami Ben Ali',    'matricule' => 'KH-ADM-001', 'role' => 'admin',                   'filiale' => 'store'],
-            ['email' => 'owner@flesk.com',        'name' => 'Amina Mansour',   'matricule' => 'KH-OWN-001', 'role' => 'process_owner',           'filiale' => 'store'],
-            ['email' => 'expert@flesk.com',       'name' => 'Nizar Haddad',    'matricule' => 'KH-EXP-001', 'role' => 'expert_metier',           'filiale' => 'store'],
-            ['email' => 'dept.manager@flesk.com', 'name' => 'Rania Sassi',     'matricule' => 'KH-DPT-001', 'role' => 'responsable_departement', 'filiale' => 'hq'],
-            ['email' => 'validator@flesk.com',    'name' => 'Leila Trabelsi',  'matricule' => 'KH-VAL-001', 'role' => 'validator',               'filiale' => 'store'],
-            ['email' => 'manager@flesk.com',      'name' => 'Karim Bouazizi',  'matricule' => 'KH-MGR-101', 'role' => 'manager',                 'filiale' => 'store'],
-            ['email' => 'operator@flesk.com',     'name' => 'Karim Zouari',    'matricule' => 'KH-OPR-101', 'role' => 'operator',                'filiale' => 'store'],
-            ['email' => 'hr.admin@flesk.com',     'name' => 'Fatma Gharbi',    'matricule' => 'KH-HRA-001', 'role' => 'hr_admin',                'filiale' => 'store'],
-            ['email' => 'hr.user@flesk.com',      'name' => 'Youssef Nasri',   'matricule' => 'KH-HRU-001', 'role' => 'hr_user',                 'filiale' => 'store'],
+            ['email' => 'admin@flesk.com',        'name' => 'Sami Ben Ali',    'matricule' => 'KH-ADM-001', 'role' => 'admin',                   'access_role' => 'admin',                   'filiale' => 'store'],
+            ['email' => 'owner@flesk.com',        'name' => 'Amina Mansour',   'matricule' => 'KH-OWN-001', 'role' => 'process_owner',           'access_role' => 'data_owner',              'filiale' => 'store'],
+            ['email' => 'expert@flesk.com',       'name' => 'Nizar Haddad',    'matricule' => 'KH-EXP-001', 'role' => 'expert_metier',           'access_role' => 'redacteur',               'filiale' => 'store'],
+            ['email' => 'dept.manager@flesk.com', 'name' => 'Rania Sassi',     'matricule' => 'KH-DPT-001', 'role' => 'responsable_departement', 'access_role' => 'responsable_departement', 'filiale' => 'hq'],
+            ['email' => 'validator@flesk.com',    'name' => 'Leila Trabelsi',  'matricule' => 'KH-VAL-001', 'role' => 'validator',               'access_role' => 'qualite',                 'filiale' => 'store'],
+            // Also responsable_departement, and deliberately so: dept.manager above
+            // sits on the HQ filiale, and the RLS policies scope by strict
+            // filiale_id equality (see the FLAG below), so it cannot validate a
+            // Store #101 article. Without a store-level métier validator the
+            // pending_metier stage would have no one able to action it.
+            ['email' => 'manager@flesk.com',      'name' => 'Karim Bouazizi',  'matricule' => 'KH-MGR-101', 'role' => 'manager',                 'access_role' => 'responsable_departement', 'filiale' => 'store'],
+            ['email' => 'operator@flesk.com',     'name' => 'Karim Zouari',    'matricule' => 'KH-OPR-101', 'role' => 'operator',                'access_role' => 'lecteur',                 'filiale' => 'store'],
+            ['email' => 'hr.admin@flesk.com',     'name' => 'Fatma Gharbi',    'matricule' => 'KH-HRA-001', 'role' => 'hr_admin',                'access_role' => 'lecteur',                 'filiale' => 'store'],
+            ['email' => 'hr.user@flesk.com',      'name' => 'Youssef Nasri',   'matricule' => 'KH-HRU-001', 'role' => 'hr_user',                 'access_role' => 'lecteur',                 'filiale' => 'store'],
         ];
 
         $users = [];
@@ -77,9 +90,10 @@ class DatabaseSeeder extends Seeder
                 [
                     'name'       => $u['name'],
                     'matricule'  => $u['matricule'],
-                    'password'   => bcrypt('password123'),
-                    'filiale_id' => $filiale->id,
-                    'role_id'    => $roleModels[$u['role']]->id,
+                    'password'    => bcrypt('password123'),
+                    'filiale_id'  => $filiale->id,
+                    'role_id'     => $roleModels[$u['role']]->id,
+                    'access_role' => $u['access_role'],
                 ]
             );
         }

@@ -50,7 +50,9 @@
       "Bash(cp src/app/features/article-workflow/article-list/article-list.component.ts /tmp/list.bak)",
       "Bash(sed -i \"s|    .replace\\(/\\\\\\\\\\\\\\\\p{Mn}/gu, ''\\)|    // MUTATION: diacritic strip removed|\" src/app/features/article-workflow/article-list/article-list.component.ts)",
       "Bash(cp /tmp/list.bak src/app/features/article-workflow/article-list/article-list.component.ts)",
-      "Bash(rm -f /tmp/list.bak)"
+      "Bash(rm -f /tmp/list.bak)",
+      "Bash(curl -s -o /dev/null -w \"API: %{http_code}\\\\n\" http://localhost:8000/api/v1/articles)",
+      "Bash(curl -s -o /dev/null -w \"Angular: %{http_code}\\\\n\" http://localhost:4200)"
     ]
   }
 }
