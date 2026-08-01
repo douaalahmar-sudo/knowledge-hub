@@ -4,7 +4,7 @@
 # row-level security (app/Support/Database/RowLevelSecurity.php, applied by the
 # 2026_07_30_000004 and 2026_07_31_000001 migrations), so pdo_pgsql must be
 # present and the attached database must be Postgres — SQLite will not do.
-FROM php:8.3-apache
+FROM php:8.4-apache
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev \
