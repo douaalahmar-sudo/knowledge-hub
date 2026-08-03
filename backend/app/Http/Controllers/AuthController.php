@@ -102,16 +102,25 @@ class AuthController extends Controller
      * The `tenant` key is kept as an alias of `filiale` because the Angular
      * client still reads it (see AuthService.establishApiSession). Drop it once
      * the frontend has moved over.
+     *
+     * `client_ip` is per-*request* context rather than stored user data, which
+     * is why it belongs on this endpoint and not in `tokenPayload()`: the
+     * article viewer's watermark (cahier des charges §10.3) has to show the
+     * address the document is being read from right now, and a session cached
+     * at login time would keep showing the network the user logged in from.
+     * Correctness of this value depends on the trustProxies() config in
+     * bootstrap/app.php — see the note there.
      */
     public function me(Request $request): JsonResponse
     {
         $user = $request->user()->load('role', 'filiale');
 
         return response()->json([
-            'user'    => $user,
-            'role'    => $user->role?->name,
-            'filiale' => $user->filiale,
-            'tenant'  => $user->filiale,
+            'user'      => $user,
+            'role'      => $user->role?->name,
+            'filiale'   => $user->filiale,
+            'tenant'    => $user->filiale,
+            'client_ip' => $request->ip(),
         ]);
     }
 

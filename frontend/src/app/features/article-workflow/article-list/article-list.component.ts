@@ -75,6 +75,39 @@ export class ArticleWorkflowListComponent implements OnInit {
     { value: 'note', label: 'Note' },
   ];
 
+  /**
+   * Whether `term` (already normalized, already non-empty) hits any of the
+   * searchable fields — spec §5.1 asks for keyword search across metadata, not
+   * titles alone.
+   *
+   * OR *within* the search box, which is what makes one query box usable: the
+   * user types "sécurité" without having to say which field to look in. The
+   * AND against the status/criticite chips lives in filteredArticles and is
+   * unaffected.
+   *
+   * `slug` is here rather than `id` deliberately. §5.1 lists ID as a mandatory
+   * searchable field, but `id` is a UUID nobody reads off a screen and types
+   * back in; `slug` is the human-usable identifier for the same row and is
+   * derived from the title server-side. Note this means a slug match is often
+   * also a title match — no harm, `some` short-circuits.
+   *
+   * Everything goes through normalize() so accents and case behave identically
+   * on every field; a second comparison style here would mean "procedure"
+   * finding an accented title but not an accented tag.
+   */
+  private matchesSearch(article: Article, term: string): boolean {
+    // content_summary is nullable on the model, tags_metier is an array that
+    // is routinely empty — neither can be fed to normalize() unguarded.
+    const haystack: string[] = [
+      article.title,
+      article.slug,
+      article.content_summary ?? '',
+      ...article.tags_metier,
+    ];
+
+    return haystack.some(field => normalize(field).includes(term));
+  }
+
   /** The three filters combined with AND. */
   filteredArticles = computed<Article[]>(() => {
     const term = normalize(this.searchTerm().trim());
@@ -85,7 +118,7 @@ export class ArticleWorkflowListComponent implements OnInit {
       article =>
         (status === 'all' || article.status === status) &&
         (criticite === 'all' || article.criticite === criticite) &&
-        (term === '' || normalize(article.title).includes(term))
+        (term === '' || this.matchesSearch(article, term))
     );
   });
 

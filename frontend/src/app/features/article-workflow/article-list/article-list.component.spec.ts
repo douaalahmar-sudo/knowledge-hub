@@ -58,21 +58,36 @@ describe('ArticleWorkflowListComponent', () => {
   });
 
   describe('filtering', () => {
+    // The slug/content_summary/tags_metier values are chosen so that each new
+    // searchable field can be hit *in isolation* — no term used below matches
+    // two fields of the same article by accident, which is what lets these
+    // tests prove which field did the matching.
     const securite = makeArticle({
       id: 'a1',
       title: 'Procédure de sécurité',
+      slug: 'procedure-de-securite',
+      content_summary: 'Port des équipements de protection individuelle.',
+      tags_metier: ['HSE', 'Atelier', 'Prévention'],
       status: 'published',
       criticite: 'golden_rule',
     });
     const qualite = makeArticle({
       id: 'a2',
       title: 'Contrôle qualité',
+      slug: 'controle-qualite',
+      content_summary: 'Échantillonnage à la réception des matières.',
+      tags_metier: ['Qualité', 'Controle Statistique'],
       status: 'pending_metier',
       criticite: 'note',
     });
+    // Left with content_summary: null and tags_metier: [] on purpose — the
+    // nullable summary and the empty array are the two shapes that would throw
+    // if the new fields were fed to normalize() unguarded, so every query below
+    // is also a smoke test for them.
     const archive = makeArticle({
       id: 'a3',
       title: 'Ancienne procedure',
+      slug: 'ancienne-procedure',
       status: 'archived',
       criticite: 'note',
     });
@@ -100,6 +115,78 @@ describe('ArticleWorkflowListComponent', () => {
       expect(titles()).toEqual(['Ancienne procedure']);
     });
 
+    // ------------------------------------------------------- spec §5.1 fields
+    // Search must reach metadata, not just the title. Each test below picks a
+    // term that appears in exactly one field, and asserts the *other* fields
+    // really don't contain it — otherwise a passing test would prove nothing
+    // about which field the match came from.
+
+    it('matches on content_summary when the title does not', () => {
+      component.searchTerm.set('protection');
+
+      expect(securite.title.toLowerCase()).not.toContain('protection');
+      expect(securite.slug).not.toContain('protection');
+      expect(securite.tags_metier.join(' ').toLowerCase()).not.toContain('protection');
+
+      expect(titles()).toEqual(['Procédure de sécurité']);
+    });
+
+    it('matches on a tag when neither title nor summary does', () => {
+      component.searchTerm.set('atelier');
+
+      expect(securite.title.toLowerCase()).not.toContain('atelier');
+      expect(securite.content_summary!.toLowerCase()).not.toContain('atelier');
+
+      expect(titles()).toEqual(['Procédure de sécurité']);
+    });
+
+    it('matches on slug when the title does not', () => {
+      // The hyphenated form exists only in the slug: the title is
+      // "Contrôle qualité", which normalizes to "controle qualite" — a space,
+      // not a hyphen — so this term can only come from the slug.
+      component.searchTerm.set('controle-qualite');
+
+      expect(titles()).toEqual(['Contrôle qualité']);
+    });
+
+    it('is accent-insensitive on content_summary, both directions', () => {
+      // Unaccented query against an accented summary ("équipements").
+      component.searchTerm.set('equipements');
+      expect(titles()).toEqual(['Procédure de sécurité']);
+
+      // And uppercase+accented query against the same summary.
+      component.searchTerm.set('ÉCHANTILLONNAGE');
+      expect(titles()).toEqual(['Contrôle qualité']);
+    });
+
+    it('is accent-insensitive on tags, both directions', () => {
+      // Unaccented query against the accented tag "Prévention", which appears
+      // in no other field of that article.
+      component.searchTerm.set('prevention');
+      expect(securite.title.toLowerCase()).not.toContain('prevention');
+      expect(securite.content_summary!.toLowerCase()).not.toContain('prevention');
+      expect(titles()).toEqual(['Procédure de sécurité']);
+
+      // The reverse: accented query against the deliberately *unaccented* tag
+      // "Controle Statistique" — a term the title "Contrôle qualité" does not
+      // contain, so the tag is the only possible source of the match.
+      component.searchTerm.set('CONTRÔLE STATISTIQUE');
+      expect(titles()).toEqual(['Contrôle qualité']);
+    });
+
+    it('leaves an article with a null summary and no tags searchable by title', () => {
+      // Guards the nullable/empty shapes: these must not throw, and must not
+      // start matching everything either.
+      expect(archive.content_summary).toBeNull();
+      expect(archive.tags_metier).toEqual([]);
+
+      component.searchTerm.set('ancienne');
+      expect(titles()).toEqual(['Ancienne procedure']);
+
+      component.searchTerm.set('protection');
+      expect(titles()).not.toContain('Ancienne procedure');
+    });
+
     it('filters by status', () => {
       component.statusFilter.set('archived');
       expect(titles()).toEqual(['Ancienne procedure']);
@@ -119,6 +206,46 @@ describe('ArticleWorkflowListComponent', () => {
       // Each filter alone would match it; flipping one to a non-matching
       // value must exclude it, which a filter OR'd together would not.
       component.criticiteFilter.set('note');
+      expect(titles()).toEqual([]);
+    });
+
+    /**
+     * The regression this guards: widening the search must stay OR *within*
+     * the query and AND *against* the chips. If the new fields had been folded
+     * in as another OR branch at the top level, a summary or tag hit would
+     * start overriding the status/criticite chips entirely.
+     */
+    it('ANDs a summary match with the status and criticite filters', () => {
+      component.searchTerm.set('protection');
+      component.statusFilter.set('published');
+      component.criticiteFilter.set('golden_rule');
+      expect(titles()).toEqual(['Procédure de sécurité']);
+
+      // The summary still matches, but the status no longer does.
+      component.statusFilter.set('draft');
+      expect(titles()).toEqual([]);
+
+      // Status restored, criticite flipped instead.
+      component.statusFilter.set('published');
+      component.criticiteFilter.set('note');
+      expect(titles()).toEqual([]);
+    });
+
+    it('ANDs a tag match with the status and criticite filters', () => {
+      component.searchTerm.set('atelier');
+      component.statusFilter.set('published');
+      expect(titles()).toEqual(['Procédure de sécurité']);
+
+      component.statusFilter.set('archived');
+      expect(titles()).toEqual([]);
+    });
+
+    it('ANDs a slug match with the status filter', () => {
+      component.searchTerm.set('controle-qualite');
+      component.statusFilter.set('pending_metier');
+      expect(titles()).toEqual(['Contrôle qualité']);
+
+      component.statusFilter.set('published');
       expect(titles()).toEqual([]);
     });
 

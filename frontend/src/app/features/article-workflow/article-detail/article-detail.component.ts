@@ -96,23 +96,42 @@ export class ArticleWorkflowDetailComponent implements OnInit, OnDestroy {
   });
 
   /**
-   * Identifies who opened the document, for the overlay. `matricule` is the
-   * employee id the spec asks for; AuthService only started carrying it
-   * recently, so a session cached before then (or one created by the local
-   * register() path, which never had one) falls back to the email — still
-   * uniquely identifying, which is the whole point of a watermark.
+   * The API's view of where this client is connecting from, filled in
+   * asynchronously by ngOnInit. Null until it lands, and permanently null if
+   * the call fails — see the fallback in watermarkText.
+   */
+  private clientIp = signal<string | null>(null);
+
+  /**
+   * Identifies who opened the document, for the overlay. Spec §10.3 fixes both
+   * the fields and their order:
+   *   [Nom complet] | [Matricule] | [Adresse IP] | [Horodatage à la seconde]
+   *
+   * Every field degrades to a placeholder rather than rendering `undefined`,
+   * since a watermark that says "undefined" is worse than one that admits a
+   * gap. `matricule` is the employee id the spec asks for; AuthService only
+   * started carrying it recently, so a session cached before then (or one
+   * created by the local register() path, which never had one) falls back to
+   * the email — still uniquely identifying, which is the whole point of a
+   * watermark. The IP has no such second source, so it degrades straight to
+   * the placeholder.
    */
   watermarkText = computed(() => {
     const user = this.auth.currentUser();
     const name = user?.name || 'Utilisateur inconnu';
     const employeeId = user?.matricule || user?.email || '—';
-    return `${name} · ${employeeId} · ${this.viewedAt}`;
+    const ip = this.clientIp() || '—';
+    return `${name} | ${employeeId} | ${ip} | ${this.viewedAt}`;
   });
 
-  /** Captured once: this is when *this* user opened *this* document. */
+  /**
+   * Captured once: this is when *this* user opened *this* document.
+   * `timeStyle: 'medium'` is what makes fr-FR emit HH:MM:SS — the spec asks for
+   * an "horodatage à la seconde", and 'short' drops the seconds.
+   */
   private readonly viewedAt = new Intl.DateTimeFormat('fr-FR', {
     dateStyle: 'short',
-    timeStyle: 'short',
+    timeStyle: 'medium',
   }).format(new Date());
 
   /** Kept for retry(): `article()` is still null while state is 'error'. */
@@ -123,6 +142,12 @@ export class ArticleWorkflowDetailComponent implements OnInit, OnDestroy {
   // the back link and the rest of the page keep normal right-click behaviour.
 
   ngOnInit(): void {
+    // Fired unconditionally and not awaited: the watermark reads clientIp()
+    // as a signal, so the overlay renders immediately with the placeholder and
+    // swaps in the address when it arrives. Blocking the viewer on it would
+    // trade a document that opens for one field of an overlay.
+    this.auth.fetchClientIp().subscribe(ip => this.clientIp.set(ip));
+
     this.articleId = this.route.snapshot.paramMap.get('id');
 
     if (!this.articleId) {

@@ -177,6 +177,27 @@ export class AuthService {
   }
 
   /**
+   * The IP address the API sees this client connecting from, per
+   * GET /v1/auth/me's `client_ip`.
+   *
+   * Deliberately fetched on demand rather than cached onto the session at
+   * login: it is request context, not user data, and a user who logs in at the
+   * office and reads a document later from home must be watermarked with the
+   * address they are actually reading from (spec §10.3).
+   *
+   * Never throws and never nulls out the session — the caller only needs this
+   * for display, so a failure degrades to `null` and lets the UI show its own
+   * placeholder. Deriving it client-side is not an option: a browser cannot see
+   * its own public IP, only the server can report it.
+   */
+  fetchClientIp(): Observable<string | null> {
+    return this.http.get<{ client_ip?: string | null }>(`${environment.apiUrl}/v1/auth/me`).pipe(
+      map(payload => payload?.client_ip ?? null),
+      catchError(() => of(null))
+    );
+  }
+
+  /**
    * Authenticates against the real Laravel backend (POST /v1/auth/login) and
    * establishes a session from the Sanctum token it returns.
    *

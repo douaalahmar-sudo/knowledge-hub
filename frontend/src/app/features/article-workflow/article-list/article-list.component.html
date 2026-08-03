@@ -41,8 +41,8 @@
           <input
             type="search"
             class="kh-search__input"
-            placeholder="Rechercher par titre…"
-            aria-label="Rechercher un article par titre"
+            placeholder="Rechercher par titre, résumé, tag métier ou identifiant…"
+            aria-label="Rechercher un article par titre, résumé, tag métier ou identifiant"
             [value]="searchTerm()"
             (input)="searchTerm.set($any($event.target).value)"
           />
