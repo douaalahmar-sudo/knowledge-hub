@@ -15,3 +15,85 @@ body {
   padding: 0;
   overflow: hidden;
 }
+
+/* ===================================================== §10.2 — selection ===
+
+   Text selection is off inside any frame carrying the copy guard. Kept here,
+   keyed on the directive's own attribute, rather than repeated across
+   .ad-frame, .pd-frame, .pd-video-stage, .pd-figure and .pd-lightbox__stage:
+   one rule that cannot fall out of step with the directive, and a frame added
+   later inherits it by applying the guard.
+
+   Selection is what feeds Ctrl+C, drag-to-desktop and the Edit menu, so this
+   and BlockCopyShortcutsDirective are two halves of the same measure. Neither
+   reaches inside the PDF <iframe>, whose text stays selectable in the browser's
+   own viewer — see the directive's notes on what this cannot prevent. */
+[appBlockCopyShortcuts] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ======================================================== §11 — printing ===
+
+   "L'impression doit être désactivée et masquée par défaut sur l'intégralité
+   du Hub." Hub-wide, not viewer-only, and deliberately so: a printed article
+   list or search result page still discloses document titles, references and
+   the reader's context, and the clause says intégralité. Every page therefore
+   prints as the notice below and nothing else.
+
+   THE ONE EXCEPTION is §11.1's authorized print. While a server-issued grant is
+   held, PrintAuthorizationService stamps `data-print-authorized` on <html> and
+   PrintSheetComponent — which moves its host to be a direct child of <body>
+   precisely so this stays one rule — reveals itself past the blanket hide
+   below. No grant, no attribute, no exception: the default is unchanged for
+   every other page and every other user.
+
+   HONEST LIMITS — this is a cooperative measure, not an enforced one:
+   - It only governs a print pipeline that honours `@media print`. Print-to-PDF
+     drivers, some "save as PDF" extensions and reader modes re-render the page
+     from the DOM and may ignore it entirely.
+   - It does not stop screenshots, devtools, or a user deleting this stylesheet
+     from the inspector.
+   - It hides content from the printer; it does not make the content
+     unreachable. The §10.3 watermark is what covers the leak that gets past
+     this, by making any capture traceable to the reader who made it. */
+@media print {
+  /* No headers/footers to frame a page that is intentionally near-empty. */
+  @page {
+    margin: 18mm;
+  }
+
+  html,
+  body {
+    /* The app pins body to overflow:hidden for its fixed layout; a print
+       context needs the flow back or the notice can land on a blank sheet. */
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* app-root and any overlay/lightbox/dialog container the app appends to
+     body. `display: none` rather than visibility/opacity: those still reserve
+     pages, and a colour-based hide is undone by "print backgrounds". */
+  body > * {
+    display: none !important;
+  }
+
+  body::before {
+    content: 'Impression désactivée — ce contenu est réservé à la consultation en ligne dans le Knowledge Hub.';
+    display: block;
+    font: 600 12pt/1.6 system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color: #000;
+    text-align: center;
+    padding-top: 40mm;
+  }
+
+  /* §11.1: an authorized print must not carry "Impression désactivée" across
+     the top of the very sheet it just authorized. The notice is suppressed for
+     the duration of the grant; the print sheet reveals itself on its own (see
+     print-sheet.component.scss). */
+  html[data-print-authorized] body::before {
+    content: none;
+    padding-top: 0;
+  }
+}

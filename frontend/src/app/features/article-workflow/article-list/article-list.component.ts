@@ -11,6 +11,7 @@ import {
   ArticleStatus,
   ArticleStatusBadge,
 } from '../../../core/models/article.model';
+import { AuthService } from '../../../services/auth.service';
 import { IconComponent } from '../../../shared/icon/icon.component';
 
 /** Filter values, i.e. the domain values plus an "any" option. */
@@ -53,6 +54,25 @@ function normalize(value: string): string {
 })
 export class ArticleWorkflowListComponent implements OnInit {
   private articleApi = inject(ArticleApiService);
+  private auth = inject(AuthService);
+
+  /**
+   * Whether to offer the "Nouvel article" button. Mirrors the backend
+   * `create-articles` Gate (AppServiceProvider), which is
+   * `hasRole(['redacteur', 'admin'])` — 'admin' is not listed here because
+   * hasAccessRole() already passes it for every set, same as the sidebar's
+   * canValidateArticles and the validation page's per-action computeds.
+   *
+   * Keyed on `access_role`, NOT on canAccess()/the legacy roles table: that
+   * Gate is defined on access_role, and the two dimensions don't line up
+   * ('redacteur' has no legacy-role equivalent). Reads null as "cannot",
+   * which is the safe direction — a session cached before access_role was
+   * persisted gets the button back as soon as backfillAccessRole() lands.
+   *
+   * UI affordance only. Hiding the button authorizes nothing; the route is
+   * reachable by URL and ArticleController re-checks the Gate on POST.
+   */
+  canCreateArticle = computed<boolean>(() => this.auth.hasAccessRole(['redacteur']));
 
   articles = signal<Article[]>([]);
   isLoading = signal(true);

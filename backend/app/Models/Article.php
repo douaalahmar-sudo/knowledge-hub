@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\AlertStatus;
 use App\Enums\ArticleCriticite;
 use App\Enums\ArticleStatus;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -97,4 +99,51 @@ class Article extends Model
     {
         return $this->hasMany(Article::class, 'parent_article_id');
     }
+
+    // ---------------------------------------------------------------- alerts
+
+    /** Every discrepancy reported against this article (§7.2). */
+    public function alerts(): HasMany
+    {
+        return $this->hasMany(ArticleAlert::class);
+    }
+
+    /**
+     * Only the alerts a Process Owner has taken but not yet closed — the exact
+     * set §7.3 Niveau 2's "révision opérationnelle" banner keys on. Exposed as
+     * a relationship rather than a scope so callers can `withCount()` it and
+     * resolve a whole list in one query.
+     */
+    public function alertsEnCours(): HasMany
+    {
+        return $this->alerts()->where('status', AlertStatus::EnCours->value);
+    }
+
+    /**
+     * §7.3 Niveau 2: whether to show "Procédure en cours de révision
+     * opérationnelle" on this article.
+     *
+     * Reads the eager-loaded `alerts_en_cours_count` when it is there, which is
+     * why ArticleController always calls withCount('alertsEnCours') — a list of
+     * N articles then costs one extra query, not N. The exists() fallback only
+     * exists so a model built outside those endpoints still reports the truth
+     * instead of silently claiming `false`; it is a correctness net, not the
+     * intended path.
+     */
+    protected function isUnderRevision(): Attribute
+    {
+        return Attribute::get(function (): bool {
+            if (array_key_exists('alerts_en_cours_count', $this->attributes)) {
+                return (int) $this->attributes['alerts_en_cours_count'] > 0;
+            }
+
+            return $this->alertsEnCours()->exists();
+        });
+    }
+
+    /**
+     * Serialized on every article response so the frontend banner needs no
+     * second request. Snake_case in JSON: `is_under_revision`.
+     */
+    protected $appends = ['is_under_revision'];
 }

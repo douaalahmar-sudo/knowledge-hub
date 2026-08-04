@@ -5,10 +5,14 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProcedureController;
 use App\Http\Controllers\ProcedureVersionController;
 use App\Http\Controllers\TriptychUploadController;
+use App\Http\Controllers\ArticleAlertController;
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\KaizenController;
 use App\Http\Controllers\HrRequestController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\GlobalSearchController;
+use App\Http\Controllers\PrintAuthorizationController;
+use App\Http\Controllers\SecurityAlertController;
 use App\Http\Controllers\Api\EtapeWorkflowController;
 
 /*
@@ -78,6 +82,51 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // not Laravel's raw 404 for a route that simply didn't match.
         Route::post('/articles/{article}/files/{format}', [ArticleController::class, 'uploadFile']);
         Route::get('/articles/{article}/files/{format}', [ArticleController::class, 'retrieveFile']);
+
+        // §11.1 authorized printing — the only exception to §11's Hub-wide
+        // print ban, one document and a few minutes at a time. Gated on
+        // `authorize-print` (admin/data_owner) inside the controller so the
+        // denial keeps its French message. `consume` has no Gate: by then the
+        // grant itself is the authorization, and it is checked against its
+        // holder and its expiry rather than against a role.
+        Route::post('/articles/{article}/print-authorizations', [PrintAuthorizationController::class, 'store']);
+        Route::post('/print-authorizations/{authorization}/consume', [PrintAuthorizationController::class, 'consume']);
+    });
+
+    // --- ARTICLE ALERTS / SIGNALEMENTS D'ÉCART (§7.2 / §7.3) ---
+    // Distinct from the legacy /kaizen/signals routes further down, which are
+    // procedure-keyed and untouched by this module.
+    //
+    // Reporting is open to any authenticated user per §7.2 ("tout
+    // collaborateur"); acknowledge/close are gated on `process-article-alerts`
+    // (data_owner/admin — the "Gardien du Temple" of §6.1) inside
+    // ProcessArticleAlertRequest, not by route middleware, so the denial keeps
+    // its French message. The role split on the list itself lives in the
+    // controller for the same reason.
+    Route::prefix('v1')->group(function () {
+        Route::post('/articles/{article}/alerts', [ArticleAlertController::class, 'store']);
+        Route::get('/alerts', [ArticleAlertController::class, 'index']);
+        Route::post('/alerts/{alert}/acknowledge', [ArticleAlertController::class, 'acknowledge']);
+        Route::post('/alerts/{alert}/close', [ArticleAlertController::class, 'close']);
+    });
+
+    // --- AUDIT LOG / JOURNAL D'AUDIT (§10.4) ---
+    // Read-only, and gated in IndexAuditLogRequest rather than by route
+    // middleware so the 403 keeps its French message (same reason as the
+    // article and alert endpoints). The `view-audit-logs` Gate is not the only
+    // barrier: the RLS policy on `audit_logs` grants SELECT to admin and
+    // data_owner alone, so the table stays closed even to a caller who somehow
+    // reaches it without passing through here.
+    //
+    // Writes have no route on purpose — entries come from AuditLogger inside
+    // the action being audited, and the table accepts no UPDATE or DELETE.
+    Route::prefix('v1')->group(function () {
+        Route::get('/audit-logs', [AuditLogController::class, 'index']);
+
+        // §10.4 automated security alerts, for DSI-equivalent staff. Admin
+        // only — narrower than the audit trail, see the Gate. No POST: alerts
+        // are raised by SecurityAnomalyDetector, never filed by hand.
+        Route::get('/security-alerts', [SecurityAlertController::class, 'index']);
     });
 
     // --- HR SELF-SERVICE / EMPLOYEE SERVICES (Module 2) ---

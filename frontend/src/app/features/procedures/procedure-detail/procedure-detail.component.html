@@ -112,22 +112,42 @@
               </div>
 
               <div class="pd-toolbar__group">
-                <a class="pd-ctl pd-ctl--wide" [href]="available().pdf" target="_blank" rel="noopener">
-                  <app-icon name="external" [size]="14" /> Plein écran
-                </a>
-                <a class="pd-ctl pd-ctl--wide" [href]="available().pdf"
-                   [attr.download]="downloadName('pdf')">
-                  <app-icon name="download" [size]="14" /> Télécharger
-                </a>
+                <!-- In-app toggle, not a link to the file. It expands the frame
+                     below, so the overlay and the right-click block come with
+                     it; a target="_blank" link to available().pdf would hand
+                     over the raw document with none of them. -->
+                <button type="button" class="pd-ctl pd-ctl--wide"
+                        (click)="togglePdfFullscreen()"
+                        [attr.aria-pressed]="isPdfFullscreen()">
+                  <app-icon [name]="isPdfFullscreen() ? 'x' : 'maximize'" [size]="14" />
+                  {{ isPdfFullscreen() ? 'Quitter le plein écran' : 'Plein écran' }}
+                </button>
               </div>
             </div>
 
             <!-- Native browser PDF viewer. Page/zoom are driven through the URL
-                 fragment; the plugin's own toolbar remains available as a fallback. -->
-            <iframe class="pd-pdf"
-                    [src]="pdfSrc()"
-                    title="Document PDF de la procédure"
-                    loading="lazy"></iframe>
+                 fragment; the plugin's own toolbar remains available as a fallback.
+                 The wrapper exists to anchor and clip the §10.3 overlay, to
+                 scope right-click suppression to the document itself, and to be
+                 the element that goes fullscreen — the iframe and the overlay
+                 are its children, so they cannot be separated. -->
+            <div class="pd-frame"
+                 [class.pd-frame--fullscreen]="isPdfFullscreen()"
+                 appBlockContextMenu
+                 appBlockCopyShortcuts>
+              @if (isPdfFullscreen()) {
+                <button type="button" class="pd-ctl pd-ctl--dark pd-frame__exit"
+                        (click)="exitPdfFullscreen()"
+                        aria-label="Quitter le plein écran">
+                  <app-icon name="x" [size]="16" />
+                </button>
+              }
+              <iframe class="pd-pdf"
+                      [src]="pdfSrc()"
+                      title="Document PDF de la procédure"
+                      loading="lazy"></iframe>
+              <app-document-watermark />
+            </div>
 
             <p class="pd-note">
               Les contrôles de page et de zoom sont transmis au lecteur PDF natif du
@@ -139,12 +159,22 @@
         <!-- ========================================== VIDEO (Task #19) === -->
         @if (activeTab() === 'video') {
           <div class="pd-panel" role="tabpanel" id="panel-video" aria-labelledby="tab-video">
-            <div class="pd-video-stage">
+            <div class="pd-video-stage" appBlockContextMenu appBlockCopyShortcuts>
+              <!-- controlsList/disablePictureInPicture mirror the article
+                   viewer. controlsList only governs the *native* control bar,
+                   which this player does not use (no `controls` attribute — see
+                   .pd-vctl below), so it is inert here and kept only so the
+                   attribute is already right if native controls ever return.
+                   disablePictureInPicture does apply. The real download vector
+                   on this element is the context menu, which appBlockContextMenu
+                   above covers. -->
               <video #videoEl
                      class="pd-video"
                      [src]="available().video"
                      preload="metadata"
                      playsinline
+                     controlsList="nodownload noplaybackrate"
+                     disablePictureInPicture
                      (click)="togglePlay()"
                      (play)="onPlay()"
                      (pause)="onPause()"
@@ -159,6 +189,8 @@
                   <span class="pd-video__play"><app-icon name="play" [size]="30" /></span>
                 </button>
               }
+
+              <app-document-watermark />
             </div>
 
             <!-- Custom control bar -->
@@ -199,11 +231,6 @@
                           (click)="setRate(r)">{{ r }}×</button>
                 }
               </div>
-
-              <a class="pd-ctl pd-ctl--wide" [href]="available().video"
-                 [attr.download]="downloadName('video')">
-                <app-icon name="download" [size]="14" /> Télécharger
-              </a>
             </div>
           </div>
         }
@@ -216,14 +243,12 @@
                 <button type="button" class="pd-ctl" (click)="openLightbox()">
                   <app-icon name="maximize" [size]="15" /> Plein écran
                 </button>
-                <a class="pd-ctl pd-ctl--wide" [href]="available().infographic"
-                   [attr.download]="downloadName('infographic')">
-                  <app-icon name="download" [size]="14" /> Télécharger
-                </a>
               </div>
             </div>
 
             <button type="button" class="pd-figure" (click)="openLightbox()"
+                    appBlockContextMenu
+                    appBlockCopyShortcuts
                     aria-label="Agrandir l’infographie">
               <img class="pd-figure__img"
                    [src]="available().infographic"
@@ -232,6 +257,7 @@
               <span class="pd-figure__hint">
                 <app-icon name="zoom-in" [size]="14" /> Cliquez pour agrandir
               </span>
+              <app-document-watermark />
             </button>
           </div>
         }
@@ -254,22 +280,22 @@
               [disabled]="imageZoom() >= 5" aria-label="Zoomer">
         <app-icon name="zoom-in" [size]="16" />
       </button>
-      <a class="pd-ctl pd-ctl--dark" [href]="available().infographic"
-         [attr.download]="downloadName('infographic')" aria-label="Télécharger">
-        <app-icon name="download" [size]="16" />
-      </a>
       <button type="button" class="pd-ctl pd-ctl--dark" (click)="closeLightbox()" aria-label="Fermer">
         <app-icon name="x" [size]="16" />
       </button>
     </div>
 
-    <div class="pd-lightbox__stage" (click)="$event.stopPropagation()">
+    <!-- The fullscreen view is the most exposed presentation of the document,
+         so it carries the overlay and both guards too. -->
+    <div class="pd-lightbox__stage" appBlockContextMenu appBlockCopyShortcuts
+         (click)="$event.stopPropagation()">
       <img class="pd-lightbox__img"
            [src]="available().infographic"
            [style.transform]="'scale(' + imageZoom() + ')'"
            [class.pd-lightbox__img--zoomed]="imageZoom() > 1"
            alt="Infographie en plein écran"
            (click)="toggleImageZoom()" />
+      <app-document-watermark />
     </div>
 
     <p class="pd-lightbox__esc">Échap pour fermer · cliquez sur l’image pour zoomer</p>

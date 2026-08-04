@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Database\AccessRoleContext;
 use App\Support\Database\FilialeContext;
+use BackedEnum;
 use Closure;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
@@ -11,9 +13,9 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Publishes the authenticated user's filiale onto the PostgreSQL connection, so
- * the RLS policies have something to filter on, before the request reaches a
- * controller.
+ * Publishes the authenticated user's filiale — and their access_role, for the
+ * `audit_logs` policy — onto the PostgreSQL connection, so the RLS policies
+ * have something to filter on before the request reaches a controller.
  *
  * This middleware does not decide what the user may see — it only states *who*
  * they are. The filtering itself happens in the database, which is why there is
@@ -41,10 +43,28 @@ class SetTenantContext
         // whoever held it last.
         FilialeContext::set($filialeId ? (string) $filialeId : '');
 
+        // The caller's access_role, for the one policy that needs to know it —
+        // `audit_logs`, where everyone may append but only admin/data_owner may
+        // read (see RowLevelSecurity::enableSecurityLog()). Written under the
+        // same unconditional rule, and for a sharper reason: a stale role left
+        // on a pooled connection would be a privilege escalation, not just a
+        // wrong tenant.
+        // User casts `access_role` to App\Enums\UserRole, so getAttribute()
+        // hands back an enum instance, not a string — the string branch is for
+        // a model hydrated without the cast (raw query, future refactor).
+        $accessRole = $user?->getAttribute('access_role');
+
+        AccessRoleContext::set(match (true) {
+            $accessRole instanceof BackedEnum => (string) $accessRole->value,
+            is_string($accessRole) => $accessRole,
+            default => '',
+        });
+
         try {
             return $next($request);
         } finally {
             FilialeContext::forget();
+            AccessRoleContext::forget();
         }
     }
 

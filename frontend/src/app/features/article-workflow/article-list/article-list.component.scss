@@ -7,6 +7,58 @@
    inline styles cannot express. Same slate + indigo palette as the inline
    markup and the sibling article-workflow components. */
 
+/* ---------------------------------------------------------------- header */
+
+.kh-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.kh-header__text {
+  /* Lets the subtitle wrap instead of shoving the button off the row. */
+  min-width: 0;
+  flex: 1 1 420px;
+}
+
+/* Same pill/gradient primary as .ae-btn--primary in the editor and the
+   validation queue's own button. Kept as a local class rather than shared:
+   those carry component-scoped --ae/--av custom properties, and lifting one
+   shared button out is a bigger refactor than this change should drag in. */
+.kh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter 0.15s, background 0.15s;
+
+  &:hover { filter: brightness(1.05); }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.35);
+  }
+
+  &--primary {
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    color: #fff;
+    box-shadow: 0 18px 30px -18px rgba(37, 99, 235, 0.75);
+  }
+}
+
+/* ---------------------------------------------------------------- filters */
+
 .kh-filters {
   display: flex;
   flex-wrap: wrap;

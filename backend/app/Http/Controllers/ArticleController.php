@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Enums\ArticleCriticite;
 use App\Enums\ArticleFileFormat;
 use App\Enums\ArticleStatus;
+use App\Enums\AuditAction;
 use App\Enums\UserRole;
 use App\Http\Requests\RejectArticleRequest;
 use App\Http\Requests\StoreArticleRequest;
 use App\Http\Requests\UpdateArticleRequest;
 use App\Http\Requests\UploadArticleFileRequest;
 use App\Models\Article;
+use App\Services\AuditLogger;
 use App\Services\GoogleDriveService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +31,14 @@ use Throwable;
 class ArticleController extends Controller
 {
     /**
+     * §10.4 requires every consultation to be journalled, and §4.2 requires
+     * archived versions to stay traceable there. Both are written through this
+     * one service so no endpoint re-derives the actor or the IP — see
+     * AuditLogger for why the address is not a parameter.
+     */
+    public function __construct(private AuditLogger $audit) {}
+
+    /**
      * Filiale scoping needs nothing here: the RLS policy on `articles` already
      * confines every query on this connection to the caller's filiale. The
      * only extra restriction applied in the app itself is role-based — a
@@ -36,7 +46,12 @@ class ArticleController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Article::with('author:id,name,email')->latest();
+        // withCount feeds Article::isUnderRevision() (§7.3 Niveau 2) — one
+        // extra query for the whole list rather than one per article, which is
+        // what the accessor's exists() fallback would otherwise cost here.
+        $query = Article::with('author:id,name,email')
+            ->withCount('alertsEnCours')
+            ->latest();
 
         if ($request->user()->hasRole(UserRole::Lecteur)) {
             $this->restrictToPublishedActive($query);
@@ -51,10 +66,35 @@ class ArticleController extends Controller
         // for a draft/superseded article by id still shouldn't see it. 404
         // rather than 403 — same as index(), it's simply not there for them.
         if ($request->user()->hasRole(UserRole::Lecteur) && ! $this->isPublishedActive($article)) {
+            // Journalled before aborting: a refused consultation is exactly
+            // what a security log is for. The entry records the article the
+            // caller asked for, and why they did not get it.
+            $this->audit->log(AuditAction::ArticleAccessDenied, $article, [
+                'endpoint' => 'articles.show',
+                'reason' => 'lecteur_non_published_active',
+                'status' => $article->status->value,
+                'is_active_version' => $article->is_active_version,
+            ]);
+
             abort(404);
         }
 
-        return response()->json($article->load('author:id,name,email'), 200);
+        // §10.4. index() is deliberately not journalled: a list is a page of
+        // titles, not a consultation of a document, and one row per list render
+        // would bury the events that matter under navigation noise.
+        $this->audit->log(AuditAction::ArticleViewed, $article, [
+            'status' => $article->status->value,
+            'version' => $article->version,
+        ]);
+
+        // loadCount rather than withCount: $article is already route-bound and
+        // hydrated here. Without it Article::isUnderRevision() falls back to an
+        // exists() query — correct either way, but this keeps the §7.3 banner
+        // flag on the same footing as index().
+        return response()->json(
+            $article->load('author:id,name,email')->loadCount('alertsEnCours'),
+            200
+        );
     }
 
     public function store(StoreArticleRequest $request): JsonResponse
@@ -121,8 +161,12 @@ class ArticleController extends Controller
 
         $this->assertCanTransition($article, ArticleStatus::PendingMetier);
 
+        $previous = $article->status;
+
         $article->status = ArticleStatus::PendingMetier;
         $article->save();
+
+        $this->logTransition(AuditAction::ArticleSubmitted, $article, $previous);
 
         return response()->json($article->load('author:id,name,email'), 200);
     }
@@ -136,9 +180,13 @@ class ArticleController extends Controller
 
         $this->assertCanTransition($article, ArticleStatus::PendingQualite);
 
+        $previous = $article->status;
+
         $article->status = ArticleStatus::PendingQualite;
         $article->validated_by_metier_id = $request->user()->id;
         $article->save();
+
+        $this->logTransition(AuditAction::ArticleValidatedMetier, $article, $previous);
 
         return response()->json($article->load('author:id,name,email'), 200);
     }
@@ -155,15 +203,42 @@ class ArticleController extends Controller
 
         $this->assertCanTransition($article, ArticleStatus::Published);
 
-        DB::transaction(function () use ($article, $request) {
-            $this->archivePreviousActiveVersion($article);
+        $previous = $article->status;
+
+        $archived = DB::transaction(function () use ($article, $request) {
+            $retired = $this->archivePreviousActiveVersion($article);
 
             $article->status = ArticleStatus::Published;
             $article->validated_by_qualite_id = $request->user()->id;
             $article->published_at = now();
             $article->is_active_version = true;
             $article->save();
+
+            return $retired;
         });
+
+        // Journalled after the commit, not inside it. A failed INSERT inside a
+        // PostgreSQL transaction aborts the whole transaction, and AuditLogger
+        // swallows write failures by design — so logging in there could turn a
+        // lost audit entry into a lost publication, which is the wrong way
+        // round. The cost is that a crash between the two loses the entries;
+        // the publication itself is still recoverable from the article row.
+        $this->logTransition(AuditAction::ArticleValidatedQualite, $article, $previous);
+
+        // §4.2: archived versions must stay "traçables dans les logs d'audit".
+        // One entry per superseded version, pointing at the version itself
+        // rather than at the article that replaced it — the trail is queried by
+        // "what happened to this document", so it has to be filed under the
+        // document it happened to.
+        foreach ($archived as $retired) {
+            $this->audit->log(AuditAction::ArticleArchived, $retired, [
+                'old_status' => ArticleStatus::Published->value,
+                'new_status' => ArticleStatus::Archived->value,
+                'superseded_by' => $article->id,
+                'superseded_by_version' => $article->version,
+                'reason' => 'nouvelle_version_publiee',
+            ]);
+        }
 
         return response()->json($article->fresh()->load('author:id,name,email'), 200);
     }
@@ -179,8 +254,17 @@ class ArticleController extends Controller
      */
     public function reject(RejectArticleRequest $request, Article $article): JsonResponse
     {
+        $previous = $article->status;
+
         $article->status = ArticleStatus::Draft;
         $article->save();
+
+        // The `reason` is still not persisted on the article (see the docblock),
+        // but it is recorded here: the audit trail is the one place it can be
+        // kept today without inventing a column the workflow does not yet read.
+        $this->logTransition(AuditAction::ArticleRejected, $article, $previous, [
+            'reason' => $request->validated()['reason'] ?? null,
+        ]);
 
         return response()->json($article->load('author:id,name,email'), 200);
     }
@@ -236,17 +320,44 @@ class ArticleController extends Controller
         }
 
         if ($request->user()->hasRole(UserRole::Lecteur) && ! $this->isPublishedActive($article)) {
+            $this->audit->log(AuditAction::ArticleAccessDenied, $article, [
+                'endpoint' => 'articles.files.retrieve',
+                'format' => $fileFormat->value,
+                'reason' => 'lecteur_non_published_active',
+                'status' => $article->status->value,
+                'is_active_version' => $article->is_active_version,
+            ]);
+
             abort(404);
         }
 
         $fileId = $article->{$fileFormat->column()};
 
         if (! $fileId) {
+            $this->audit->log(AuditAction::ArticleAccessDenied, $article, [
+                'endpoint' => 'articles.files.retrieve',
+                'format' => $fileFormat->value,
+                'reason' => 'format_absent',
+            ]);
+
             abort(404, "Aucun fichier « {$fileFormat->label()} » n'a été téléversé pour cet article.");
         }
 
         $content = $drive->streamFile($fileId);
         $mimeType = $drive->getMimeType($fileId) ?? $fileFormat->fallbackMimeType();
+
+        // §10.4, and the event the §10.3 watermark is the on-screen half of:
+        // this is the moment the document itself reaches a reader. Logged after
+        // the Drive fetch succeeds, so an entry means content was actually
+        // served rather than merely requested — a failed fetch throws before
+        // here and is a 500 in the application log, not a consultation.
+        $this->audit->log(AuditAction::ArticleFileViewed, $article, [
+            'format' => $fileFormat->value,
+            'mime_type' => $mimeType,
+            'drive_file_id' => $fileId,
+            'status' => $article->status->value,
+            'version' => $article->version,
+        ]);
 
         return response($content)
             ->header('Content-Type', $mimeType)
@@ -272,25 +383,61 @@ class ArticleController extends Controller
      * of a lineage points at the same root, per the "Zéro Doublon" model).
      * A brand-new, never-versioned article has no parent_article_id and
      * nothing to archive here.
+     *
+     * Returns the rows it retired so validateQualite() can journal one §4.2
+     * entry each. They are fetched before the mass update rather than after:
+     * afterwards they no longer match the `is_active_version` predicate, and a
+     * bulk update reports a count, not which rows it touched.
+     *
+     * @return \Illuminate\Support\Collection<int, Article>
      */
-    private function archivePreviousActiveVersion(Article $article): void
+    private function archivePreviousActiveVersion(Article $article): \Illuminate\Support\Collection
     {
         $rootId = $article->parent_article_id;
 
         if (! $rootId) {
-            return;
+            return collect();
         }
 
-        Article::where('is_active_version', true)
+        $query = Article::where('is_active_version', true)
             ->where('id', '!=', $article->id)
             ->where(function (Builder $query) use ($rootId) {
                 $query->where('id', $rootId)
                     ->orWhere('parent_article_id', $rootId);
-            })
-            ->update([
-                'is_active_version' => false,
-                'status' => ArticleStatus::Archived->value,
-            ]);
+            });
+
+        $retiring = (clone $query)->get();
+
+        $query->update([
+            'is_active_version' => false,
+            'status' => ArticleStatus::Archived->value,
+        ]);
+
+        return $retiring;
+    }
+
+    /**
+     * One §10.4 entry for a workflow transition.
+     *
+     * old_status/new_status live in the metadata of every transition even
+     * though the action name already implies them: the action says what the
+     * actor did, the pair says what the document went through, and a reader
+     * reconstructing a lineage months later should not have to know the
+     * workflow's shape to read its history.
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    private function logTransition(
+        AuditAction $action,
+        Article $article,
+        ArticleStatus $previous,
+        array $extra = []
+    ): void {
+        $this->audit->log($action, $article, array_merge([
+            'old_status' => $previous->value,
+            'new_status' => $article->status->value,
+            'version' => $article->version,
+        ], $extra));
     }
 
     /**

@@ -1,10 +1,22 @@
 <div style="min-height: 100vh; background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%); padding: 24px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #0f172a;">
   <div style="max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
 
-    <header>
-      <p style="margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #4f46e5;">Knowledge Hub</p>
-      <h1 style="margin: 0; font-size: clamp(28px, 4vw, 40px); font-weight: 800; line-height: 1.1;">Articles</h1>
-      <p style="margin: 10px 0 0; max-width: 760px; font-size: 15px; line-height: 1.6; color: #475569;">Articles suivant le workflow de validation métier puis qualité, du brouillon à la publication.</p>
+    <!-- Sits outside the loading/error/empty branches below on purpose: the
+         empty state ("Aucun article pour le moment") is exactly where creating
+         one is the obvious next action, so the button must survive it. -->
+    <header class="kh-header">
+      <div class="kh-header__text">
+        <p style="margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #4f46e5;">Knowledge Hub</p>
+        <h1 style="margin: 0; font-size: clamp(28px, 4vw, 40px); font-weight: 800; line-height: 1.1;">Articles</h1>
+        <p style="margin: 10px 0 0; max-width: 760px; font-size: 15px; line-height: 1.6; color: #475569;">Articles suivant le workflow de validation métier puis qualité, du brouillon à la publication.</p>
+      </div>
+
+      @if (canCreateArticle()) {
+        <a routerLink="/dashboard/articles/new" class="kh-btn kh-btn--primary">
+          <app-icon name="plus" [size]="16" />
+          Nouvel article
+        </a>
+      }
     </header>
 
     @if (isLoading()) {

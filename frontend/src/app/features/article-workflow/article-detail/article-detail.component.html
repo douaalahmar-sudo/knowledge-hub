@@ -62,6 +62,29 @@
             </span>
           }
         </div>
+        <!-- §11.1 authorized print. Hidden entirely unless the caller may
+             authorize one: §11 requires printing be "masquée par défaut", so a
+             reader who would only be refused never sees the affordance. The
+             server Gate is what enforces it; this is the "masquée" half. -->
+        @if (canAuthorizePrint()) {
+          <div class="ad-print">
+            <button type="button" class="ad-btn ad-btn--ghost ad-print__btn"
+                    [disabled]="printPending()"
+                    (click)="requestPrint()">
+              <app-icon name="printer" [size]="15" />
+              {{ printPending() ? 'Autorisation…' : 'Autoriser et imprimer' }}
+            </button>
+
+            <p class="ad-print__note">
+              L'impression est tracée : une copie unique au nom de votre matricule, valable
+              quelques minutes.
+            </p>
+
+            @if (printError()) {
+              <p class="ad-print__error" role="alert">{{ printError() }}</p>
+            }
+          </div>
+        }
       </header>
 
       @if (a.tags_metier.length > 0) {
@@ -116,8 +139,11 @@
           } @else {
             <!-- position:relative anchors the watermark overlay below.
                  appBlockContextMenu scopes right-click suppression to just the
-                 document content — page navigation outside this stays normal. -->
-            <div class="ad-frame" appBlockContextMenu>
+                 document content — page navigation outside this stays normal.
+                 appBlockCopyShortcuts adds the §10.2 copy/save/print shortcut
+                 block; it is live only while this frame is on screen. Neither
+                 is a security boundary — see the directives' own notes. -->
+            <div class="ad-frame" appBlockContextMenu appBlockCopyShortcuts>
               @switch (format) {
                 @case ('pdf') {
                   <iframe
@@ -141,17 +167,19 @@
                 }
               }
 
-              <!-- pointer-events:none — the document underneath stays fully
-                   scrollable/seekable through this overlay. -->
-              <div class="ad-watermark" aria-hidden="true">
-                @for (i of watermarkRepeats; track i) {
-                  <span class="ad-watermark__line">{{ watermarkText() }}</span>
-                }
-              </div>
+              <!-- §10.3 overlay, shared with the procedure viewer. One grey
+                   covers every format, video included — see the component. -->
+              <app-document-watermark />
             </div>
           }
         </section>
       }
+
+      <!-- §11.1: what an authorized print puts on paper. Never visible on
+           screen, and only revealed to the printer while a server-issued grant
+           is held — it relocates its own host to <body> so §11's blanket hide
+           needs exactly one exception. -->
+      <app-print-sheet [article]="a" [infographicUrl]="printableInfographic()" />
     }
 
   </div>

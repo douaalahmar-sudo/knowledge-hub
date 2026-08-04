@@ -82,20 +82,30 @@
           Aucune pièce jointe pour cet article.
         </div>
 
+        <!-- LEGACY — NEEDS A DECISION.
+             These were anchors carrying [attr.download] plus target="_blank",
+             i.e. a one-click save of the attachment. §10.2 requires zero
+             download by default, so the affordance is gone and the list is now
+             inert: filename only, no href.
+
+             No watermark was added here, deliberately. This component reads the
+             localStorage-backed mock ArticleService, not Drive-backed
+             documents, so there is nothing real to trace and a §10.3 overlay
+             would be decoration. The open question is whether this legacy
+             knowledge-base view should keep an attachment list at all, or be
+             retired in favour of the article-workflow viewer, which does have
+             the full protections. Until that is decided, showing the names
+             without a way to pull the files is the conservative position. -->
         <div *ngIf="article.attachments && article.attachments.length > 0" class="space-y-2">
-          <a
+          <div
             *ngFor="let file of article.attachments"
-            [href]="file.url"
-            [attr.download]="file.name"
-            target="_blank"
-            rel="noopener"
-            class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-indigo-200 text-sm transition">
+            class="flex items-center justify-between p-3 border border-gray-200 rounded-lg text-sm">
             <span class="flex items-center gap-2 min-w-0">
               <span class="text-gray-400"><app-icon name="file" [size]="16" /></span>
-              <span class="font-medium text-indigo-600 truncate">{{ file.name }}</span>
+              <span class="font-medium text-gray-700 truncate">{{ file.name }}</span>
             </span>
-            <span class="text-gray-400 shrink-0"><app-icon name="download" [size]="15" /></span>
-          </a>
+            <span class="text-xs text-gray-400 shrink-0">Consultation en ligne uniquement</span>
+          </div>
         </div>
       </div>
 

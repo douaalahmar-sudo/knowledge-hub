@@ -1,0 +1,114 @@
+/* §11.1 authorized print sheet.
+
+   Invisible on screen in every state: this exists to be printed, and showing it
+   in the viewer would put a second, worse copy of the article under the real
+   one. The `@media print` block below is the only place it is ever displayed,
+   and only while a grant is live. */
+:host {
+  display: none;
+}
+
+@media print {
+  /* The exception to §11's blanket `body > * { display: none }`. Both halves
+     are required: the attribute is set by PrintAuthorizationService only while
+     a server-issued grant is held, so with no grant this selector never
+     matches and the blanket rule stands untouched. */
+  :host-context(html[data-print-authorized]) {
+    display: block !important;
+    /* Padding rather than margin: the fixed banners sit in this space, and a
+       margin would let body text run underneath them. */
+    padding: 26mm 0;
+    color: #000;
+    background: #fff;
+    font: 11pt/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+}
+
+.ps__banner {
+  /* Fixed so Chrome and Firefox repeat it on every sheet of a multi-page
+     print. Safari is inconsistent about this — hence the notice also appearing
+     inline in the document flow, which prints at least once regardless. */
+  position: fixed;
+  left: 0;
+  right: 0;
+  padding: 4mm 0;
+  border: 1.5pt solid #000;
+  font-size: 9.5pt;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+
+  &--top {
+    top: 0;
+  }
+
+  &--bottom {
+    bottom: 0;
+  }
+}
+
+.ps__body {
+  padding: 0 4mm;
+}
+
+.ps__title {
+  margin: 0 0 4mm;
+  font-size: 16pt;
+  font-weight: 700;
+}
+
+.ps__meta {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5mm 8mm;
+  margin: 0 0 6mm;
+  padding-bottom: 4mm;
+  border-bottom: 0.5pt solid #000;
+  font-size: 9.5pt;
+
+  div {
+    display: flex;
+    gap: 2mm;
+  }
+
+  dt {
+    font-weight: 700;
+
+    &::after {
+      content: ' :';
+    }
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.ps__summary {
+  margin: 0 0 6mm;
+  /* Keeps a paragraph from being split across a page break mid-sentence where
+     the printer supports it. */
+  orphans: 3;
+  widows: 3;
+}
+
+.ps__figure {
+  display: block;
+  max-width: 100%;
+  /* Leaves room for the fixed footer banner on the page it lands on. */
+  max-height: 170mm;
+  margin: 0 auto 6mm;
+  object-fit: contain;
+}
+
+.ps__legal {
+  margin: 8mm 0 0;
+  padding: 3mm;
+  border: 0.5pt solid #000;
+  font-size: 9pt;
+  font-style: italic;
+  /* The clause is the last thing a reader should be able to lose: never split
+     it across two sheets. */
+  break-inside: avoid;
+}

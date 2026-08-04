@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, shareReplay } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 /**
@@ -195,6 +195,28 @@ export class AuthService {
       map(payload => payload?.client_ip ?? null),
       catchError(() => of(null))
     );
+  }
+
+  /** Memoised {@see fetchClientIp} result, shared by every subscriber. */
+  private clientIpOnce$?: Observable<string | null>;
+
+  /**
+   * Same value as fetchClientIp(), but the request is issued once per session
+   * and replayed to later subscribers.
+   *
+   * This exists because the watermark is now per *viewer frame*: an article
+   * with a PDF, an infographic and a video renders three overlays, and each one
+   * asking the API where the client is connecting from would mean three
+   * identical /v1/auth/me calls to paint one unchanging string. The address
+   * cannot change mid-session in any way that matters to a watermark.
+   *
+   * refCount stays false on purpose — navigating away from the last viewer and
+   * back must not re-issue the call.
+   */
+  clientIpOnce(): Observable<string | null> {
+    return (this.clientIpOnce$ ??= this.fetchClientIp().pipe(
+      shareReplay({ bufferSize: 1, refCount: false })
+    ));
   }
 
   /**

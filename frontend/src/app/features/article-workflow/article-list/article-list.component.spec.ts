@@ -39,22 +39,137 @@ describe('ArticleWorkflowListComponent', () => {
   let component: ArticleWorkflowListComponent;
   let fixture: ComponentFixture<ArticleWorkflowListComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
+  /**
+   * AuthService reads localStorage in a field initializer, so a session has to
+   * be in place before TestBed instantiates it. `role` must be a known DemoRole
+   * or readUser() discards the whole session as stale.
+   */
+  function seedSession(accessRole: string | null): void {
+    localStorage.setItem('auth_token', 'test-token');
+    localStorage.setItem(
+      'current_user',
+      JSON.stringify({
+        id: 1,
+        name: 'Testeur',
+        email: 'testeur@flesk.com',
+        role: 'expert_metier',
+        ...(accessRole ? { access_role: accessRole } : {}),
+      })
+    );
+  }
+
+  function build(): void {
+    TestBed.configureTestingModule({
       imports: [ArticleWorkflowListComponent],
       // ArticleApiService needs HttpClient; the template's routerLink needs a
       // Router. No spec elsewhere in this project exercises an HttpClient-backed
       // service yet, so there's no existing convention to match here.
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
-    }).compileComponents();
+    });
 
     fixture = TestBed.createComponent(ArticleWorkflowListComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    build();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  /**
+   * The other half of the §10.2 shortcut block: it is scoped to document
+   * viewers, and this list is an ordinary page. Copying a reference out of it,
+   * saving it or printing it are all legitimate — the spec asks for the
+   * document content to be protected, not for the Hub to become a keyboard
+   * trap. If someone ever moves BlockCopyShortcutsDirective to a layout or the
+   * app root, this fails.
+   */
+  it('leaves the copy, save and print shortcuts alone on an ordinary page', () => {
+    for (const key of ['c', 's', 'p']) {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      expect(event.defaultPrevented).withContext(`Ctrl+${key} was blocked`).toBeFalse();
+    }
+  });
+
+  /**
+   * The "Nouvel article" affordance. /dashboard/articles/new has no route
+   * guard, so this button is the only thing standing between a lecteur and a
+   * create form they'd be 403'd out of — worth pinning per role.
+   */
+  describe('create affordance', () => {
+    /** Rebuilds the component against a session with the given access_role. */
+    function buildAs(accessRole: string | null): void {
+      TestBed.resetTestingModule();
+      localStorage.clear();
+      seedSession(accessRole);
+      build();
+    }
+
+    function createLink(): HTMLAnchorElement | null {
+      return fixture.nativeElement.querySelector('a[href="/dashboard/articles/new"]');
+    }
+
+    it('shows the button for a redacteur', () => {
+      buildAs('redacteur');
+      expect(component.canCreateArticle()).toBeTrue();
+      expect(createLink()?.textContent).toContain('Nouvel article');
+    });
+
+    // Matches the backend Gate, which is hasRole(['redacteur', 'admin']).
+    it('shows the button for an admin', () => {
+      buildAs('admin');
+      expect(component.canCreateArticle()).toBeTrue();
+      expect(createLink()).not.toBeNull();
+    });
+
+    it('hides the button for roles the create-articles Gate would refuse', () => {
+      for (const role of ['lecteur', 'qualite', 'responsable_departement', 'data_owner']) {
+        buildAs(role);
+        expect(component.canCreateArticle())
+          .withContext(`access_role=${role}`)
+          .toBeFalse();
+        expect(createLink()).withContext(`access_role=${role}`).toBeNull();
+      }
+    });
+
+    // A session cached before access_role started being persisted. Reads as
+    // "cannot" until backfillAccessRole() fills it in — the safe direction.
+    it('hides the button when access_role is missing entirely', () => {
+      buildAs(null);
+      expect(component.canCreateArticle()).toBeFalse();
+      expect(createLink()).toBeNull();
+    });
+
+    /**
+     * The header sits outside the loading/error/empty branches, so the button
+     * has to survive the empty state — which is precisely when a rédacteur
+     * most needs it.
+     */
+    it('still offers the button when there are no articles at all', () => {
+      buildAs('redacteur');
+      component.isLoading.set(false);
+      component.articles.set([]);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('Aucun article pour le moment');
+      expect(createLink()).not.toBeNull();
+    });
   });
 
   describe('filtering', () => {

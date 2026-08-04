@@ -217,38 +217,11 @@
 
 /* ------------------------------------------------------------- watermark */
 
-/* Oversized + rotated so the tiled text still covers the frame's corners.
-   pointer-events:none is what keeps the PDF scrollable and the video seekable
-   underneath; user-select:none stops the text joining a page copy. */
-.ad-watermark {
-  position: absolute;
-  inset: -50%;
-  width: 200%;
-  height: 200%;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: center;
-  justify-content: center;
-  gap: 44px 60px;
-  transform: rotate(-30deg);
-  pointer-events: none;
-  user-select: none;
-  z-index: 2;
-}
-
-.ad-watermark__line {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-  color: rgba(15, 23, 42, 0.14);
-}
-
-/* The PDF and video panels render dark/photographic content, so a dark
-   watermark disappears against them — invert it there. */
-.ad-frame:has(.ad-frame__video) .ad-watermark__line {
-  color: rgba(255, 255, 255, 0.22);
-}
+/* The overlay's own rules now live with the shared component
+   (shared/document-watermark/document-watermark.component.scss), which is
+   styled against the frame it is dropped into. `.ad-frame` keeps
+   `position: relative; overflow: hidden` above precisely so that overlay has
+   something to anchor to and be clipped by. */
 
 /* --------------------------------------------------------------- states */
 
@@ -309,6 +282,39 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ad-spinner { animation-duration: 2s; }
+}
+
+/* --------------------------------------------- §11.1 authorized printing */
+
+/* Rendered only for a caller who may authorize a print — §11 wants printing
+   "masquée par défaut", so this is absent rather than disabled for everyone
+   else. */
+.ad-print {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 18px;
+
+  &__btn[disabled] {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  /* Sets the expectation before the click, not after: the print is traced and
+     the grant is short-lived. */
+  &__note {
+    flex: 1 1 260px;
+    font-size: 12.5px;
+    color: var(--ad-muted, #64748b);
+  }
+
+  &__error {
+    flex: 1 1 100%;
+    font-size: 13px;
+    font-weight: 600;
+    color: #b91c1c;
+  }
 }
 
 @media (max-width: 640px) {

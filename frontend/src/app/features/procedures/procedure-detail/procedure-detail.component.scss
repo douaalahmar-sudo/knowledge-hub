@@ -295,6 +295,43 @@
 
 /* ------------------------------------------------------------------- pdf */
 
+/* Anchors and clips the §10.3 overlay over the PDF. The iframe below carries
+   the rounded corners itself, so this matches them to avoid a square edge
+   showing through the clip. */
+.pd-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+
+  /* Fullscreen is a style change on this same element rather than a separate
+     surface, which is the point: the iframe, the watermark and the right-click
+     block are its children and travel with it. The previous affordance was a
+     link to the raw file, which had none of them. */
+  &--fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    border-radius: 0;
+    background: #0f172a;
+
+    .pd-pdf {
+      /* Overrides the panel-sized height further down so the document uses the
+         whole window. */
+      height: 100vh;
+      border-radius: 0;
+    }
+  }
+
+  &__exit {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    /* Above the watermark overlay (z-index 2), or the close button would sit
+       under it and read as unclickable. */
+    z-index: 3;
+  }
+}
+
 .pd-pdf {
   display: block;
   width: 100%;
@@ -507,6 +544,11 @@
     justify-content: center;
     overflow: auto;
     padding: 0 16px 16px;
+    /* Anchors the §10.3 overlay over the fullscreen image. Note the overlay is
+       absolutely positioned inside this scroll container, so at zoom levels
+       that make the stage scroll it travels with the image rather than staying
+       pinned to the viewport — acceptable, since it stays over the document. */
+    position: relative;
   }
 
   &__img {

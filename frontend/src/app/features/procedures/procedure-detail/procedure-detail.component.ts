@@ -11,6 +11,10 @@ import {
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { AuthService } from '../../../services/auth.service';
+import { BlockContextMenuDirective } from '../../../shared/directives/block-context-menu.directive';
+import { BlockCopyShortcutsDirective } from '../../../shared/directives/block-copy-shortcuts.directive';
+import { DocumentWatermarkComponent } from '../../../shared/document-watermark/document-watermark.component';
 import { IconComponent } from '../../../shared/icon/icon.component';
 import { ProcedureApiService } from '../../../core/services/procedure-api.service';
 import { Procedure, TRIPTYCH_ORDER, TriptychFormat } from '../../../core/models/procedure.model';
@@ -33,12 +37,20 @@ const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 @Component({
   selector: 'app-procedure-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, IconComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    IconComponent,
+    BlockContextMenuDirective,
+    BlockCopyShortcutsDirective,
+    DocumentWatermarkComponent,
+  ],
   templateUrl: './procedure-detail.component.html',
   styleUrl: './procedure-detail.component.scss',
 })
 export class ProcedureDetailComponent implements OnInit {
   private api = inject(ProcedureApiService);
+  private auth = inject(AuthService);
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
 
@@ -61,6 +73,19 @@ export class ProcedureDetailComponent implements OnInit {
    */
   pdfZoom = signal(100);
   pdfPage = signal(1);
+
+  /**
+   * Expands the *existing* watermarked frame to fill the window.
+   *
+   * This replaces a link that pointed at `available().pdf` with
+   * target="_blank". That handed the reader the raw file URL in a bare tab,
+   * where the §10.3 overlay, the right-click block and the removal of the
+   * download buttons all simply did not apply — one click undid the protections
+   * on this tab. Styling the same DOM node fullscreen keeps the iframe, the
+   * overlay and appBlockContextMenu together, so the affordance survives
+   * without the hole.
+   */
+  isPdfFullscreen = signal(false);
 
   // -- Video panel ---------------------------------------------------------
   isPlaying = signal(false);
@@ -95,6 +120,12 @@ export class ProcedureDetailComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // Warms the memoised client-IP lookup so the §10.3 overlay's IP field is
+    // filled by the time a document frame paints — see the same call in
+    // ArticleWorkflowDetailComponent. Memoised, so the four overlays this page
+    // can mount share one request with this one.
+    this.auth.clientIpOnce().subscribe();
+
     const id = Number(this.route.snapshot.paramMap.get('id'));
 
     if (!id) {
@@ -259,19 +290,33 @@ export class ProcedureDetailComponent implements OnInit {
     this.imageZoom.update(z => (z > 1 ? 1 : 2));
   }
 
+  // ------------------------------------------------------------------- pdf
+
+  togglePdfFullscreen(): void {
+    this.isPdfFullscreen.update(open => !open);
+  }
+
+  exitPdfFullscreen(): void {
+    this.isPdfFullscreen.set(false);
+  }
+
+  /**
+   * Escape leaves whichever fullscreen surface is open. The two are mutually
+   * exclusive in practice — they belong to different tabs — but the lightbox is
+   * checked first so behaviour stays deterministic if that ever changes.
+   */
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    if (this.isLightboxOpen()) this.closeLightbox();
+    if (this.isLightboxOpen()) {
+      this.closeLightbox();
+      return;
+    }
+
+    if (this.isPdfFullscreen()) this.exitPdfFullscreen();
   }
 
-  // ----------------------------------------------------------------- misc
-
-  /** Filename for the download attribute, derived from the reference code. */
-  downloadName(format: TriptychFormat): string {
-    const p = this.procedure();
-    const base = p?.reference_code || 'procedure';
-    const url = this.available()[format] || '';
-    const ext = url.split('.').pop()?.split('?')[0] || 'bin';
-    return `${base}-${format}.${ext}`;
-  }
+  // downloadName() lived here to feed the `download` attribute on the four
+  // "Télécharger" links. Those are gone per §10.2 ("zéro téléchargement" by
+  // default) — §2 names downloadable procedures as a failure of the previous
+  // version — so the helper had no remaining caller and went with them.
 }

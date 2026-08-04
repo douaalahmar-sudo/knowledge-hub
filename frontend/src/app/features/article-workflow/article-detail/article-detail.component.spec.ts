@@ -82,8 +82,14 @@ describe('ArticleWorkflowDetailComponent', () => {
     fixture.detectChanges();
   }
 
+  /**
+   * `.dw__line` since the overlay moved into the shared
+   * DocumentWatermarkComponent; it used to be this component's own
+   * `.ad-watermark__line`. The assertions below are unchanged — the point of
+   * keeping them here is that the extraction did not weaken §10.3 for articles.
+   */
   function renderedWatermark(): string {
-    const line: HTMLElement | null = fixture.nativeElement.querySelector('.ad-watermark__line');
+    const line: HTMLElement | null = fixture.nativeElement.querySelector('.dw__line');
     return line?.textContent?.trim() ?? '';
   }
 
@@ -168,5 +174,44 @@ describe('ArticleWorkflowDetailComponent', () => {
 
     expect(renderedWatermark().split('|').map(f => f.trim())[2]).toBe('—');
     expect(renderedWatermark()).not.toContain('undefined');
+  });
+
+  // ----------------------------------------------------- §10.2 protections
+
+  /**
+   * The key matrix lives in BlockCopyShortcutsDirective's own spec; this is
+   * the wiring check — that the article viewer's frame carries the guard.
+   * Dispatched on `document` because that is where a real Ctrl+P lands: the
+   * frame is a non-focusable div, so focus stays on <body>.
+   */
+  it('blocks the save and print shortcuts while a document is displayed', () => {
+    setUp({ name: 'Douaa Lahmar', matricule: 'FLK-2291', role: 'admin' });
+    httpMock.expectOne(ME_URL).flush({ client_ip: '10.0.0.1' });
+    renderViewer();
+
+    for (const key of ['s', 'p']) {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      expect(event.defaultPrevented).withContext(`Ctrl+${key} was not blocked`).toBeTrue();
+    }
+  });
+
+  it('blocks right-click and text selection on the document frame', () => {
+    setUp({ name: 'Douaa Lahmar', matricule: 'FLK-2291', role: 'admin' });
+    httpMock.expectOne(ME_URL).flush({ client_ip: '10.0.0.1' });
+    renderViewer();
+
+    const frame: HTMLElement = fixture.nativeElement.querySelector('.ad-frame');
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    frame.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBeTrue();
+    expect(getComputedStyle(frame).userSelect).toBe('none');
   });
 });

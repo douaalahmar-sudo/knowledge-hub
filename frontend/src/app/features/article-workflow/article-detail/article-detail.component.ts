@@ -15,6 +15,10 @@ import {
 } from '../../../core/models/article.model';
 import { AuthService } from '../../../services/auth.service';
 import { BlockContextMenuDirective } from '../../../shared/directives/block-context-menu.directive';
+import { BlockCopyShortcutsDirective } from '../../../shared/directives/block-copy-shortcuts.directive';
+import { DocumentWatermarkComponent } from '../../../shared/document-watermark/document-watermark.component';
+import { PrintAuthorizationService } from '../../../core/services/print-authorization.service';
+import { PrintSheetComponent } from '../../../shared/print-sheet/print-sheet.component';
 import { IconComponent } from '../../../shared/icon/icon.component';
 
 type LoadState = 'loading' | 'loaded' | 'not-found' | 'error';
@@ -42,9 +46,6 @@ const emptyViewer = (): ViewerSlot => ({
   error: null,
 });
 
-/** How many times the watermark text is tiled across the overlay. */
-const WATERMARK_REPEATS = 28;
-
 /**
  * Read-only detail view for a single workflow article (ArticleApiService),
  * including the native inline viewer for whichever of the three formats are
@@ -59,7 +60,15 @@ const WATERMARK_REPEATS = 28;
 @Component({
   selector: 'app-article-workflow-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, IconComponent, BlockContextMenuDirective],
+  imports: [
+    CommonModule,
+    RouterModule,
+    IconComponent,
+    BlockContextMenuDirective,
+    BlockCopyShortcutsDirective,
+    DocumentWatermarkComponent,
+    PrintSheetComponent,
+  ],
   templateUrl: './article-detail.component.html',
   styleUrl: './article-detail.component.scss',
 })
@@ -70,7 +79,6 @@ export class ArticleWorkflowDetailComponent implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
 
   readonly formats = ARTICLE_FILE_FORMAT_ORDER;
-  readonly watermarkRepeats = Array.from({ length: WATERMARK_REPEATS }, (_, i) => i);
 
   article = signal<Article | null>(null);
   state = signal<LoadState>('loading');
@@ -95,58 +103,82 @@ export class ArticleWorkflowDetailComponent implements OnInit, OnDestroy {
     return a ? this.formats.filter(f => this.hasFormat(a, f)) : [];
   });
 
-  /**
-   * The API's view of where this client is connecting from, filled in
-   * asynchronously by ngOnInit. Null until it lands, and permanently null if
-   * the call fails — see the fallback in watermarkText.
-   */
-  private clientIp = signal<string | null>(null);
-
-  /**
-   * Identifies who opened the document, for the overlay. Spec §10.3 fixes both
-   * the fields and their order:
-   *   [Nom complet] | [Matricule] | [Adresse IP] | [Horodatage à la seconde]
-   *
-   * Every field degrades to a placeholder rather than rendering `undefined`,
-   * since a watermark that says "undefined" is worse than one that admits a
-   * gap. `matricule` is the employee id the spec asks for; AuthService only
-   * started carrying it recently, so a session cached before then (or one
-   * created by the local register() path, which never had one) falls back to
-   * the email — still uniquely identifying, which is the whole point of a
-   * watermark. The IP has no such second source, so it degrades straight to
-   * the placeholder.
-   */
-  watermarkText = computed(() => {
-    const user = this.auth.currentUser();
-    const name = user?.name || 'Utilisateur inconnu';
-    const employeeId = user?.matricule || user?.email || '—';
-    const ip = this.clientIp() || '—';
-    return `${name} | ${employeeId} | ${ip} | ${this.viewedAt}`;
-  });
-
-  /**
-   * Captured once: this is when *this* user opened *this* document.
-   * `timeStyle: 'medium'` is what makes fr-FR emit HH:MM:SS — the spec asks for
-   * an "horodatage à la seconde", and 'short' drops the seconds.
-   */
-  private readonly viewedAt = new Intl.DateTimeFormat('fr-FR', {
-    dateStyle: 'short',
-    timeStyle: 'medium',
-  }).format(new Date());
+  // The §10.3 overlay — its identity fields, IP fetch and timestamp — now lives
+  // in DocumentWatermarkComponent, rendered per viewer frame in the template.
 
   /** Kept for retry(): `article()` is still null while state is 'error'. */
   private articleId: string | null = null;
+
+  // ------------------------------------------------- §11.1 authorized print
+
+  readonly printAuth = inject(PrintAuthorizationService);
+
+  /** Set while the grant request is in flight, and cleared by its outcome. */
+  printPending = signal(false);
+
+  /** The API's French message when authorization is refused (403/422). */
+  printError = signal<string | null>(null);
+
+  /**
+   * Whether to offer the print affordance at all.
+   *
+   * §11 says printing is "masquée par défaut" — hidden, not merely disabled —
+   * so a reader who cannot authorize a print must not see a print button they
+   * would only be refused. The server Gate is what actually enforces this;
+   * this is the "masquée" half.
+   */
+  canAuthorizePrint = computed(() =>
+    this.auth.hasAccessRole(['admin', 'data_owner'])
+    && this.article()?.status === 'published'
+    && this.article()?.is_active_version === true
+  );
+
+  /**
+   * The infographic's object URL, when that format is loaded — the one document
+   * asset that lives in our own DOM and can therefore be printed. The PDF is a
+   * cross-origin iframe and cannot; see PrintSheetComponent.
+   */
+  printableInfographic = computed<string | null>(() => this.viewers().infographie.objectUrl);
+
+  /**
+   * Authorize, then print. Two server calls (grant, then consume) with the
+   * dialogue between them — see PrintAuthorizationService.
+   */
+  requestPrint(): void {
+    const id = this.article()?.id;
+
+    if (!id || this.printPending()) return;
+
+    this.printPending.set(true);
+    this.printError.set(null);
+
+    this.printAuth.authorize(id).subscribe({
+      next: () => {
+        this.printPending.set(false);
+        // A tick, so the sheet is in the DOM before the dialogue snapshots the
+        // page. Without it the first print of a session can capture an empty
+        // sheet — the grant signal and the render are not the same turn.
+        setTimeout(() => this.printAuth.print());
+      },
+      error: (err: { message?: string }) => {
+        this.printPending.set(false);
+        this.printError.set(err?.message ?? 'Impossible d\'autoriser l\'impression.');
+      },
+    });
+  }
 
   // Right-click suppression lives on the viewer frames themselves, via
   // appBlockContextMenu in the template — deliberately not on this host, so
   // the back link and the rest of the page keep normal right-click behaviour.
 
   ngOnInit(): void {
-    // Fired unconditionally and not awaited: the watermark reads clientIp()
-    // as a signal, so the overlay renders immediately with the placeholder and
-    // swaps in the address when it arrives. Blocking the viewer on it would
-    // trade a document that opens for one field of an overlay.
-    this.auth.fetchClientIp().subscribe(ip => this.clientIp.set(ip));
+    // Warms AuthService's memoised lookup. DocumentWatermarkComponent asks for
+    // the same value, but it only mounts once a document frame renders — by
+    // which point the document is already on screen. Starting the request here
+    // keeps the IP field filled by first paint in the common case instead of
+    // showing the placeholder over a visible document. The overlay subscribes
+    // to the same replayed result, so this costs no extra request.
+    this.auth.clientIpOnce().subscribe();
 
     this.articleId = this.route.snapshot.paramMap.get('id');
 
