@@ -1,0 +1,35 @@
+# Root .htaccess — ONLY needed on hosts where the document root cannot be
+# pointed at public/ (LiteSpeed at fleskhub.flesk.tn). It forwards every request
+# that is not an existing file or directory into public/, so Laravel's front
+# controller (public/index.php) is reached.
+#
+# This file is inert on a correctly configured host (docroot = public/), because
+# it never gets read there. Do not delete public/.htaccess — it is still the file
+# that does the actual front-controller rewrite.
+
+# --- Protect files that are now inside the document root -------------------
+# Because the docroot is this directory, .env / composer.json / artisan and the
+# storage+vendor trees are all web-reachable, and the rewrite below deliberately
+# does NOT touch requests that resolve to a real file (RewriteCond !-f). Without
+# these denies, https://fleskhub.flesk.tn/.env serves the database credentials
+# and APP_KEY in plain text. Remove this section only if the docroot is moved to
+# public/, at which point it is redundant.
+<FilesMatch "^\.env|^\.env\..*|^composer\.(json|lock)$|^package(-lock)?\.json$|^artisan$|^phpunit\.xml$|^Dockerfile$|^docker-entrypoint\.sh$|^\.gitignore$|^\.gitattributes$|^\.editorconfig$|^\.npmrc$|^\.dockerignore$|\.result\.cache$">
+    Require all denied
+</FilesMatch>
+
+RedirectMatch 404 ^/(app|bootstrap|config|database|resources|routes|storage|tests|vendor)(/|$)
+
+# --- Forward everything else into public/ ----------------------------------
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
