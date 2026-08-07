@@ -1,6 +1,9 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
+import { Observable } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ArticleApiError, ArticleApiService } from '../../../core/services/article-api.service';
 import {
@@ -55,13 +58,17 @@ const emptyViewer = (): ViewerSlot => ({
  * URLs — no Google Drive URL is ever built or exposed client-side (spec §10.2:
  * zéro téléchargement direct).
  *
- * No workflow actions here yet (submit/validate/reject land later).
+ * The workflow actions (submit/validate/reject) live here rather than on a
+ * separate screen, per the client's instruction: "si j'ai le droit de
+ * changement des statuts, je trouve la fonctionnalité dans la fiche article."
+ * See the action-bar section below for which role sees what.
  */
 @Component({
   selector: 'app-article-workflow-detail',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     RouterModule,
     IconComponent,
     BlockContextMenuDirective,
@@ -164,6 +171,151 @@ export class ArticleWorkflowDetailComponent implements OnInit, OnDestroy {
         this.printPending.set(false);
         this.printError.set(err?.message ?? 'Impossible d\'autoriser l\'impression.');
       },
+    });
+  }
+
+  // ------------------------------------------------- workflow action bar
+  //
+  // Which buttons appear is driven by `access_role` (AuthService.hasAccessRole,
+  // where 'admin' passes every set), NOT by canAccess()/the legacy roles table
+  // — the validate-metier and validate-qualite Gates are both defined on
+  // access_role and the two dimensions don't line up.
+  //
+  // Every condition below mirrors what the server will actually allow, so no
+  // visible button can lead to a guaranteed 403:
+  //   submit           ArticleController::submit() — author only, and it has
+  //                    no admin bypass, so this checks author_id, not a role.
+  //   validate-metier  Gate: responsable_departement + admin
+  //   validate-qualite Gate: qualite + admin
+  //   reject           RejectArticleRequest picks the Gate matching the
+  //                    article's current stage, so it tracks the two above.
+  //
+  // Hiding a button authorizes nothing; the server re-checks on every call.
+
+  /** Set while a transition is in flight; disables the whole bar. */
+  actionBusy = signal(false);
+  /** Failure of an *action* — distinct from errorMessage(), which is the load. */
+  actionError = signal<string | null>(null);
+  /** Confirmation after a successful transition. */
+  actionSuccess = signal<string | null>(null);
+  /** Whether the reject-reason box is open. */
+  isRejecting = signal(false);
+  rejectReason = '';
+
+  /** draft -> pending_metier. The author's own move, whatever their role. */
+  canSubmit = computed<boolean>(() => {
+    const a = this.article();
+    if (!a || a.status !== 'draft') return false;
+
+    // A lecteur cannot own a draft in practice, but excluding them explicitly
+    // keeps "lecteur: no actions, ever" true by construction rather than by
+    // circumstance.
+    if (this.auth.accessRole() === 'lecteur') return false;
+
+    return a.author_id === this.auth.currentUser()?.id;
+  });
+
+  /** pending_metier -> pending_qualite. */
+  canValidateMetier = computed<boolean>(
+    () => this.article()?.status === 'pending_metier'
+      && this.auth.hasAccessRole(['responsable_departement'])
+  );
+
+  /** pending_qualite -> published. */
+  canValidateQualite = computed<boolean>(
+    () => this.article()?.status === 'pending_qualite'
+      && this.auth.hasAccessRole(['qualite'])
+  );
+
+  /** Rejection sends either pending stage back to draft. */
+  canReject = computed<boolean>(() => this.canValidateMetier() || this.canValidateQualite());
+
+  /** Drives whether the bar renders at all. */
+  hasWorkflowActions = computed<boolean>(
+    () => this.canSubmit() || this.canValidateMetier() || this.canValidateQualite()
+  );
+
+  submit(): void {
+    const a = this.article();
+    if (!a) return;
+
+    this.run(
+      this.api.submit(a.id),
+      `« ${a.title} » soumis à la validation métier.`
+    );
+  }
+
+  validateMetier(): void {
+    const a = this.article();
+    if (!a) return;
+
+    this.run(
+      this.api.validateMetier(a.id),
+      `« ${a.title} » transmis à la validation qualité.`
+    );
+  }
+
+  validateQualite(): void {
+    const a = this.article();
+    if (!a) return;
+
+    this.run(this.api.validateQualite(a.id), `« ${a.title} » publié.`);
+  }
+
+  openReject(): void {
+    this.isRejecting.set(true);
+    this.rejectReason = '';
+    this.actionError.set(null);
+  }
+
+  closeReject(): void {
+    this.isRejecting.set(false);
+    this.rejectReason = '';
+  }
+
+  /**
+   * The reason is mandatory server-side (RejectArticleRequest: required|string)
+   * and is what the author gets told, so an empty one is refused here rather
+   * than sent off to come back as a 422.
+   */
+  confirmReject(): void {
+    const a = this.article();
+    if (!a) return;
+
+    const reason = this.rejectReason.trim();
+
+    if (!reason) {
+      this.actionError.set('Indiquez un motif de rejet — il est transmis à l’auteur.');
+      return;
+    }
+
+    this.run(
+      this.api.reject(a.id, { reason }),
+      `« ${a.title} » renvoyé en brouillon à ${a.author.name}.`
+    );
+  }
+
+  /**
+   * Shared tail for all four transitions. The response *is* the updated
+   * article, so it replaces the loaded one — that re-evaluates every computed
+   * above and the bar reshapes itself for the new status (a validated
+   * pending_metier article immediately offers the qualite step to whoever can
+   * take it). No reload, and no stale status left on screen.
+   */
+  private run(call: Observable<Article>, success: string): void {
+    this.actionBusy.set(true);
+    this.actionError.set(null);
+    this.actionSuccess.set(null);
+
+    call.pipe(finalize(() => this.actionBusy.set(false))).subscribe({
+      next: updated => {
+        this.article.set(updated);
+        this.closeReject();
+        this.actionSuccess.set(success);
+      },
+      // ArticleApiService already maps this into a ready-to-display French
+      // message — nothing left to unwrap here.
+      error: (err: ArticleApiError) => this.actionError.set(err.message),
     });
   }
 

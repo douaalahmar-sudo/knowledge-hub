@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { ArticleApiService } from '../../../core/services/article-api.service';
 import {
@@ -14,9 +14,20 @@ import {
 import { AuthService } from '../../../services/auth.service';
 import { IconComponent } from '../../../shared/icon/icon.component';
 
-/** Filter values, i.e. the domain values plus an "any" option. */
-type StatusFilter = ArticleStatus | 'all';
+/**
+ * Filter values: the domain statuses, an "any" option, and `pending`.
+ *
+ * `pending` is not a status the backend knows about — it spans both
+ * pending_metier and pending_qualite. It exists because the retired validation
+ * queue showed exactly that pair, and /dashboard/articles/validation now
+ * redirects here with `?status=pending` so those links keep landing on the
+ * same set of articles.
+ */
+type StatusFilter = ArticleStatus | 'all' | 'pending';
 type CriticiteFilter = ArticleCriticite | 'all';
+
+/** The two stages `pending` covers. */
+const PENDING_STATUSES: ArticleStatus[] = ['pending_metier', 'pending_qualite'];
 
 /**
  * Case- AND accent-insensitive, so searching "procedure" matches "Procédure".
@@ -55,6 +66,7 @@ function normalize(value: string): string {
 export class ArticleWorkflowListComponent implements OnInit {
   private articleApi = inject(ArticleApiService);
   private auth = inject(AuthService);
+  private route = inject(ActivatedRoute);
 
   /**
    * Whether to offer the "Nouvel article" button. Mirrors the backend
@@ -128,6 +140,13 @@ export class ArticleWorkflowListComponent implements OnInit {
     return haystack.some(field => normalize(field).includes(term));
   }
 
+  /** Whether an article passes the current status chip. */
+  private matchesStatus(article: Article, status: StatusFilter): boolean {
+    if (status === 'all') return true;
+    if (status === 'pending') return PENDING_STATUSES.includes(article.status);
+    return article.status === status;
+  }
+
   /** The three filters combined with AND. */
   filteredArticles = computed<Article[]>(() => {
     const term = normalize(this.searchTerm().trim());
@@ -136,7 +155,7 @@ export class ArticleWorkflowListComponent implements OnInit {
 
     return this.articles().filter(
       article =>
-        (status === 'all' || article.status === status) &&
+        this.matchesStatus(article, status) &&
         (criticite === 'all' || article.criticite === criticite) &&
         (term === '' || this.matchesSearch(article, term))
     );
@@ -156,6 +175,14 @@ export class ArticleWorkflowListComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    // Only `pending` is honoured from the URL, and only as an initial value —
+    // the chips stay the source of truth once the page is up. That is all the
+    // /articles/validation redirect needs, and it keeps an arbitrary query
+    // string from putting the filter into a state the chips cannot clear.
+    if (this.route.snapshot.queryParamMap.get('status') === 'pending') {
+      this.statusFilter.set('pending');
+    }
+
     this.loadArticles();
   }
 

@@ -72,6 +72,19 @@
             >
               Tous
             </button>
+            <!-- Spans both pending stages. This is where /articles/validation
+                 now lands, so the retired queue's links keep showing the same
+                 set of articles. -->
+            <button
+              type="button"
+              class="kh-chip"
+              data-testid="chip-pending"
+              [class.kh-chip--active]="statusFilter() === 'pending'"
+              [attr.aria-pressed]="statusFilter() === 'pending'"
+              (click)="statusFilter.set('pending')"
+            >
+              En attente de validation
+            </button>
             <!-- The active chip borrows that status's own badge colours, so the
                  filter and the cards below it read as the same vocabulary. -->
             @for (status of statusOptions; track status) {

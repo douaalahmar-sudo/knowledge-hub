@@ -87,6 +87,92 @@
         }
       </header>
 
+      <!-- Workflow actions, in the fiche article rather than a separate
+           screen. Rendered only when this user can actually move this article
+           from its current status — see the computeds in the component; the
+           server re-checks every one of them. -->
+      @if (hasWorkflowActions()) {
+        <section class="ad-actions" data-testid="workflow-actions">
+          <div class="ad-actions__row">
+            @if (canSubmit()) {
+              <button type="button" class="ad-btn ad-btn--primary"
+                      data-testid="action-submit"
+                      [disabled]="actionBusy()"
+                      (click)="submit()">
+                <app-icon name="upload" [size]="15" />
+                Soumettre à validation
+              </button>
+            }
+
+            @if (canValidateMetier()) {
+              <button type="button" class="ad-btn ad-btn--primary"
+                      data-testid="action-validate-metier"
+                      [disabled]="actionBusy()"
+                      (click)="validateMetier()">
+                <app-icon name="check" [size]="15" />
+                Valider (métier)
+              </button>
+            }
+
+            @if (canValidateQualite()) {
+              <button type="button" class="ad-btn ad-btn--primary"
+                      data-testid="action-validate-qualite"
+                      [disabled]="actionBusy()"
+                      (click)="validateQualite()">
+                <app-icon name="check" [size]="15" />
+                Valider et publier
+              </button>
+            }
+
+            @if (canReject() && !isRejecting()) {
+              <button type="button" class="ad-btn ad-btn--danger"
+                      data-testid="action-reject"
+                      [disabled]="actionBusy()"
+                      (click)="openReject()">
+                <app-icon name="alert" [size]="15" />
+                Rejeter
+              </button>
+            }
+          </div>
+
+          <!-- The reason is mandatory: it is what the author is told. -->
+          @if (isRejecting()) {
+            <div class="ad-actions__reject" data-testid="reject-form">
+              <label class="ad-actions__label" for="reject-reason">
+                Motif du rejet — transmis à l'auteur
+              </label>
+              <textarea id="reject-reason"
+                        class="ad-actions__textarea"
+                        rows="3"
+                        [(ngModel)]="rejectReason"
+                        [disabled]="actionBusy()"
+                        placeholder="Expliquez ce qui doit être corrigé…"></textarea>
+
+              <div class="ad-actions__row">
+                <button type="button" class="ad-btn ad-btn--danger"
+                        data-testid="action-reject-confirm"
+                        [disabled]="actionBusy()"
+                        (click)="confirmReject()">
+                  Confirmer le rejet
+                </button>
+                <button type="button" class="ad-btn ad-btn--ghost"
+                        [disabled]="actionBusy()"
+                        (click)="closeReject()">
+                  Annuler
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (actionError()) {
+            <p class="ad-actions__error" role="alert">{{ actionError() }}</p>
+          }
+          @if (actionSuccess()) {
+            <p class="ad-actions__success" role="status">{{ actionSuccess() }}</p>
+          }
+        </section>
+      }
+
       @if (a.tags_metier.length > 0) {
         <div class="ad-tags">
           @for (tag of a.tags_metier; track tag) {

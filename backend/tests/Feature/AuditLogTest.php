@@ -157,7 +157,12 @@ class AuditLogTest extends TestCase
         $this->assertSame($reader->id, $entry->user_id);
         $this->assertSame($draft->id, $entry->auditable_id);
         $this->assertSame('articles.show', $entry->metadata['endpoint']);
-        $this->assertSame('lecteur_non_published_active', $entry->metadata['reason']);
+        // Was 'lecteur_non_published_active' when only lecteurs were narrowed
+        // on this endpoint. show() now applies the caller's whole role slice
+        // (ArticleController::isVisibleTo), so the reason names that rather
+        // than one role, and the role itself moved into its own field.
+        $this->assertSame('outside_role_scope', $entry->metadata['reason']);
+        $this->assertSame('lecteur', $entry->metadata['access_role']);
     }
 
     public function test_a_refused_file_retrieval_records_the_format_it_was_refused(): void

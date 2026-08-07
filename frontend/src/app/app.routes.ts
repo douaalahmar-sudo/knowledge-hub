@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
 import { roleGuard } from './guards/role.guard';
 
@@ -135,21 +136,25 @@ export const routes: Routes = [
                 path: 'articles/new',
                 loadComponent: () => import('./features/article-workflow/article-editor/article-editor.component').then(m => m.ArticleWorkflowEditorComponent)
             },
-            // /dashboard/articles/validation -> validation queue (pending_metier
-            // + pending_qualite). Literal segment, so same ordering rule as
-            // 'new' above: it must precede ':id'.
+            // /dashboard/articles/validation -> retired.
             //
-            // No roleGuard, and deliberately so — roleGuard/canAccess resolve
-            // the legacy `roles`-table role, whereas the validate-metier and
-            // validate-qualite Gates this page drives are defined on the
-            // separate `access_role` column. Gating the route on the wrong role
-            // dimension would be worse than not gating it: the queue itself
-            // shows nothing a user can't already see at /dashboard/articles,
-            // and the per-row actions are hidden by access_role in the
-            // component (and re-checked server-side regardless).
+            // The separate validation queue is gone: the client asked for the
+            // status-change actions to live in the fiche article instead ("si
+            // j'ai le droit de changement des statuts, je trouve la
+            // fonctionnalité dans la fiche article"), and they now do — see
+            // ArticleWorkflowDetailComponent's action bar.
+            //
+            // The path is kept as a redirect rather than deleted so bookmarks
+            // and the links already sent to validators keep working; they land
+            // on the same set of articles the queue used to show. A function
+            // redirect (not a plain string) because the destination carries a
+            // query param, which string redirectTo cannot express.
+            //
+            // Still a literal segment, so the ordering rule holds: it must
+            // precede ':id' or ':id' would swallow it.
             {
                 path: 'articles/validation',
-                loadComponent: () => import('./features/article-workflow/article-validation/article-validation.component').then(m => m.ArticleWorkflowValidationComponent)
+                redirectTo: () => inject(Router).parseUrl('/dashboard/articles?status=pending')
             },
             // /dashboard/articles/:id -> read-only detail (layout + data only;
             // no viewer yet, no workflow actions yet). List and editor already

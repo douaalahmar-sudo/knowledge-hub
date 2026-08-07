@@ -59,16 +59,22 @@
         <span class="nav-label">Articles</span>
       </a>
 
-      <!-- File de validation — access_role-gated (responsable_departement /
-           qualite / admin), NOT canSee(), which resolves the legacy roles
-           table. See LayoutShellComponent.canValidateArticles. -->
+      <!-- "À valider" — repointed at the articles list pre-filtered to the two
+           pending stages, since the separate validation queue has been retired
+           (the actions now live in the fiche article). Kept as a nav entry
+           rather than removed: it is the validator's daily entry point, and
+           dropping it would cost them a filter click every time.
+           access_role-gated (responsable_departement / qualite / admin), NOT
+           canSee(), which resolves the legacy roles table. See
+           LayoutShellComponent.canValidateArticles. -->
       @if (canValidateArticles()) {
-      <a routerLink="/dashboard/articles/validation"
+      <a routerLink="/dashboard/articles"
+         [queryParams]="{ status: 'pending' }"
          routerLinkActive="active"
          class="nav-item">
         <span class="nav-active-bar"></span>
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 11 2 2 4-4"/></svg>
-        <span class="nav-label">File de validation</span>
+        <span class="nav-label">À valider</span>
       </a>
       }
 

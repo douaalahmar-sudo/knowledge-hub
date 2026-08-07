@@ -267,6 +267,70 @@
 
     &:hover { background: #f8fafc; }
   }
+
+  &--danger {
+    background: #fff;
+    border: 1px solid #fecaca;
+    color: var(--ad-danger);
+
+    &:hover { background: #fef2f2; }
+  }
+
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+
+/* Workflow action bar — the status-change controls the client asked to have
+   in the fiche article rather than on a separate validation screen. */
+.ad-actions {
+  margin: 18px 0 0;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid var(--ad-line);
+  border-radius: 16px;
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  &__reject {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
+  }
+
+  &__textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ad-line);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+
+    &:focus {
+      outline: none;
+      border-color: #2563eb;
+    }
+  }
+
+  &__error,
+  &__success {
+    margin: 12px 0 0;
+    font-size: 14px;
+  }
+
+  &__error { color: var(--ad-danger); }
+  &__success { color: #047857; }
 }
 
 .ad-spinner {

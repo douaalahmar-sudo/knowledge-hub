@@ -12,9 +12,11 @@ use App\Http\Requests\StoreArticleRequest;
 use App\Http\Requests\UpdateArticleRequest;
 use App\Http\Requests\UploadArticleFileRequest;
 use App\Models\Article;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\GoogleDriveService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -40,9 +42,8 @@ class ArticleController extends Controller
 
     /**
      * Filiale scoping needs nothing here: the RLS policy on `articles` already
-     * confines every query on this connection to the caller's filiale. The
-     * only extra restriction applied in the app itself is role-based — a
-     * lecteur only ever sees published, current-version articles.
+     * confines every query on this connection to the caller's filiale. What
+     * this method adds on top is the per-role narrowing — see scopeToRole().
      */
     public function index(Request $request): JsonResponse
     {
@@ -53,30 +54,29 @@ class ArticleController extends Controller
             ->withCount('alertsEnCours')
             ->latest();
 
-        if ($request->user()->hasRole(UserRole::Lecteur)) {
-            $this->restrictToPublishedActive($query);
-        }
+        $this->scopeToRole($query, $request->user());
 
         return response()->json($query->get(), 200);
     }
 
     public function show(Request $request, Article $article): JsonResponse
     {
-        // RLS already let this row through (same filiale); a lecteur asking
-        // for a draft/superseded article by id still shouldn't see it. 404
-        // rather than 403 — same as index(), it's simply not there for them.
-        if ($request->user()->hasRole(UserRole::Lecteur) && ! $this->isPublishedActive($article)) {
+        // RLS already let this row through (same filiale). What is checked here
+        // is the same per-role slice index() applies, so an article that never
+        // appears in a caller's list cannot be opened by pasting its id either.
+        if (! $this->isVisibleTo($article, $request->user())) {
             // Journalled before aborting: a refused consultation is exactly
             // what a security log is for. The entry records the article the
             // caller asked for, and why they did not get it.
             $this->audit->log(AuditAction::ArticleAccessDenied, $article, [
                 'endpoint' => 'articles.show',
-                'reason' => 'lecteur_non_published_active',
+                'reason' => 'outside_role_scope',
+                'access_role' => $request->user()->access_role?->value,
                 'status' => $article->status->value,
                 'is_active_version' => $article->is_active_version,
             ]);
 
-            abort(404);
+            $this->abortAsNotFound($article);
         }
 
         // §10.4. index() is deliberately not journalled: a list is a page of
@@ -319,16 +319,20 @@ class ArticleController extends Controller
             abort(422, "Format de fichier inconnu : « {$format} ». Valeurs acceptées : pdf, infographie, video.");
         }
 
-        if ($request->user()->hasRole(UserRole::Lecteur) && ! $this->isPublishedActive($article)) {
+        // Same slice as show(). Without this the tightening there would be
+        // cosmetic: the document itself is what is worth protecting, and this
+        // endpoint streams it from a bare article id.
+        if (! $this->isVisibleTo($article, $request->user())) {
             $this->audit->log(AuditAction::ArticleAccessDenied, $article, [
                 'endpoint' => 'articles.files.retrieve',
                 'format' => $fileFormat->value,
-                'reason' => 'lecteur_non_published_active',
+                'reason' => 'outside_role_scope',
+                'access_role' => $request->user()->access_role?->value,
                 'status' => $article->status->value,
                 'is_active_version' => $article->is_active_version,
             ]);
 
-            abort(404);
+            $this->abortAsNotFound($article);
         }
 
         $fileId = $article->{$fileFormat->column()};
@@ -450,12 +454,102 @@ class ArticleController extends Controller
     }
 
     /**
-     * Same rule as restrictToPublishedActive(), checked against an
-     * already-loaded row instead of applied to a query — used by show().
+     * Narrow the list to what this role is actually supposed to see.
+     *
+     * This has to live here and not in the Angular list. Everything this query
+     * returns ends up in the HTTP response body, so filtering client-side
+     * would hide other people's drafts from the screen while still shipping
+     * them to every reader's browser — visible in the network tab. Until this
+     * method existed, that is exactly what happened: index() restricted only
+     * lecteurs, so a redacteur received every colleague's unpublished draft.
+     *
+     * Everyone keeps seeing published + current articles, which is the shared
+     * knowledge base. Each role then gets the extra slice it works on:
+     *   - redacteur                their own articles, at any stage
+     *   - responsable_departement  the metier queue they validate
+     *   - qualite                  the qualite queue they validate
+     *   - admin / data_owner       everything, archived versions included
+     *   - lecteur, or no access_role at all
+     *                              nothing beyond published + current
+     *
+     * show() and retrieveFile() apply this same slice through isVisibleTo(),
+     * so the list and the single-article endpoints cannot disagree: an article
+     * a caller never sees listed cannot be opened — or have its PDF streamed —
+     * by pasting its id. The validator flows are unaffected, because the stage
+     * each validator acts on is part of their slice by construction
+     * (responsable_departement sees pending_metier, qualite sees
+     * pending_qualite), which is what their queue links depend on.
      */
-    private function isPublishedActive(Article $article): bool
+    private function scopeToRole(Builder $query, User $user): void
     {
-        return $article->status === ArticleStatus::Published && $article->is_active_version;
+        // §6.1 makes the data_owner ("Gardien du Temple") accountable for the
+        // filiale's whole corpus, which is not exercisable without seeing it.
+        if ($user->hasRole([UserRole::Admin, UserRole::DataOwner])) {
+            return;
+        }
+
+        $extra = match (true) {
+            $user->hasRole(UserRole::Redacteur) => fn (Builder $q) => $q->where('author_id', $user->id),
+            $user->hasRole(UserRole::ResponsableDepartement) => fn (Builder $q) => $q->where('status', ArticleStatus::PendingMetier->value),
+            $user->hasRole(UserRole::Qualite) => fn (Builder $q) => $q->where('status', ArticleStatus::PendingQualite->value),
+            // Lecteur, and any user whose access_role is null (hasRole() reads
+            // that as "no role"), fall through to published + current only.
+            default => null,
+        };
+
+        // Grouped, so the OR cannot escape and widen an unrelated constraint
+        // added to this builder later.
+        $query->where(function (Builder $scoped) use ($extra): void {
+            $scoped->where(fn (Builder $q) => $this->restrictToPublishedActive($q));
+
+            if ($extra !== null) {
+                $scoped->orWhere($extra);
+            }
+        });
+    }
+
+    /**
+     * Whether this caller's role slice contains this article — the
+     * single-article counterpart to scopeToRole().
+     *
+     * Deliberately re-asks the database instead of re-deciding in PHP against
+     * the loaded row. scopeToRole() is the one definition of who sees what, and
+     * a second implementation of the same rules here is exactly the thing that
+     * drifts: index() and show() would start disagreeing, and the disagreement
+     * would be silent. The cost is one indexed `exists()` per single-article
+     * request, against a primary key.
+     *
+     * The RLS policy still applies to this query, so an article from another
+     * filiale cannot be resurrected by it — this narrows, it never widens.
+     */
+    /**
+     * Refuse an out-of-scope article as though the row did not exist.
+     *
+     * A plain `abort(404)` is not enough. Laravel converts a failed
+     * route-model binding into a 404 carrying "No query results for model
+     * [App\Models\Article] <uuid>", and convertExceptionToArray() passes an
+     * HttpException's message through even with `app.debug` off — so a bare
+     * abort(404) answers with an *empty* message where a genuinely missing id
+     * answers with that sentence. The difference is small and it is precisely
+     * the signal a caller enumerating UUIDs is looking for: empty means "this
+     * one exists, you just cannot have it".
+     *
+     * Throwing the same exception the binding would have thrown makes the two
+     * responses byte-identical. Covered by
+     * ArticleShowScopeTest::test_an_out_of_scope_article_is_indistinguishable_from_a_nonexistent_one.
+     */
+    private function abortAsNotFound(Article $article): never
+    {
+        throw (new ModelNotFoundException)->setModel(Article::class, [$article->getKey()]);
+    }
+
+    private function isVisibleTo(Article $article, User $user): bool
+    {
+        $query = Article::query()->whereKey($article->getKey());
+
+        $this->scopeToRole($query, $user);
+
+        return $query->exists();
     }
 
     /**
