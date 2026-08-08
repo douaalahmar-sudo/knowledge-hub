@@ -1,0 +1,179 @@
+<div class="dash">
+
+  <!-- ============================================================ header -->
+  <header class="dash-header">
+    <div>
+      <h1 class="dash-greeting">Bonjour {{ firstName() }} 👋</h1>
+      <p class="dash-subtitle">Que souhaitez-vous faire aujourd'hui ?</p>
+    </div>
+    <!-- Opens the "coming soon" panel below — no real customization feature
+         exists yet, so this is honest about that rather than clicking
+         through to nothing. -->
+    <button type="button" class="dash-personalize" (click)="showPersonalizePanel.set(true)">
+      <!-- Inline SVG, not app-icon: the shared icon set has no
+           sliders/adjustments glyph, and this reads more like "customize"
+           than the pencil ("edit") icon it replaces. -->
+      <svg class="dash-personalize__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><circle cx="12" cy="4" r="2"/>
+        <line x1="21" y1="12" x2="16" y2="12"/><line x1="12" y1="12" x2="3" y2="12"/><circle cx="14" cy="12" r="2"/>
+        <line x1="21" y1="20" x2="10" y2="20"/><line x1="6" y1="20" x2="3" y2="20"/><circle cx="8" cy="20" r="2"/>
+      </svg>
+      Personnaliser
+    </button>
+  </header>
+
+  @if (showPersonalizePanel()) {
+    <div class="panel-backdrop" (click)="showPersonalizePanel.set(false)">
+      <div class="panel-dialog" (click)="$event.stopPropagation()">
+        <div class="panel-dialog__head">
+          <h3>Personnaliser le tableau de bord</h3>
+          <button type="button" class="panel-dialog__close" (click)="showPersonalizePanel.set(false)" aria-label="Fermer">
+            <app-icon name="x" [size]="16" />
+          </button>
+        </div>
+        <div class="panel-dialog__body">
+          <app-icon name="edit" [size]="28" />
+          <p>Le réagencement du tableau de bord (afficher, masquer ou réordonner les widgets) arrive bientôt.</p>
+        </div>
+        <div class="panel-dialog__foot">
+          <button type="button" class="panel-dialog__ok" (click)="showPersonalizePanel.set(false)">Compris</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ==================================================== category cards -->
+  <!-- Plain tiles, not links: Magasin/Logistique/Siège each imply a
+       sub-module (their own document space) that doesn't exist as a route
+       yet — a clickable card going nowhere would be worse than a static one.
+       Counts are mock, matching the component's own doc comment. -->
+  <section class="dash-categories">
+    @for (card of categoryCards; track card.label) {
+      <article class="cat-card" [style.background-image]="'url(' + card.image + ')'">
+        <div class="cat-card__overlay">
+          <h3 class="cat-card__label">{{ card.label }}</h3>
+          <p class="cat-card__meta">{{ card.count }} documents</p>
+          <p class="cat-card__updated">{{ card.updatedLabel }}</p>
+        </div>
+      </article>
+    }
+  </section>
+
+  <!-- ===================================================== main + widgets -->
+  <div class="dash-body">
+
+    <!-- ------------------------------------------------- main column -->
+    <div class="dash-main">
+
+      <section class="dash-section">
+        <div class="dash-section__head">
+          <h2>Procédures populaires</h2>
+          <!-- The one link in this file that goes somewhere real. -->
+          <a routerLink="/dashboard/procedures" class="dash-section__link">Voir tout</a>
+        </div>
+
+        <div class="proc-grid">
+          @for (proc of popularProcedures; track proc.title) {
+            <article class="proc-card">
+              <span class="proc-card__icon" [class]="'proc-card__icon--' + proc.format">
+                <app-icon [name]="proc.format === 'video' ? 'video' : 'file'" [size]="16" />
+              </span>
+              <h4 class="proc-card__title">{{ proc.title }}</h4>
+              <p class="proc-card__kind">{{ proc.kind }}</p>
+              <p class="proc-card__views">
+                <app-icon name="external" [size]="12" />
+                {{ proc.views | number:'':'fr' }} vues
+              </p>
+              <p class="proc-card__updated">{{ proc.updatedLabel }}</p>
+            </article>
+          }
+        </div>
+      </section>
+
+      <section class="dash-section">
+        <div class="dash-section__head">
+          <h2>Dernières mises à jour</h2>
+          <span class="dash-section__link dash-section__link--inert">Voir tout</span>
+        </div>
+
+        <div class="updates-list">
+          @for (group of recentUpdates; track group.day) {
+            <p class="updates-day">{{ group.day }}</p>
+            @for (entry of group.entries; track entry.title) {
+              <div class="update-row">
+                <span class="update-row__icon">
+                  <app-icon [name]="entry.badge === 'Vidéo' ? 'video' : entry.badge === 'Golden Rule' ? 'star' : 'file'" [size]="14" />
+                </span>
+                <span class="update-row__title">{{ entry.title }}</span>
+                @if (entry.badge) {
+                  <span class="update-row__badge" [class]="'update-row__badge--' + entry.badge.toLowerCase().replace(' ', '-')">
+                    {{ entry.badge }}
+                  </span>
+                }
+                <span class="update-row__when">{{ entry.when }}</span>
+                <span class="update-row__module">{{ entry.module }}</span>
+              </div>
+            }
+          }
+        </div>
+      </section>
+    </div>
+
+    <!-- ------------------------------------------------- right widgets -->
+    <aside class="dash-side">
+
+      <!-- No Académie feature exists yet — visual only, both actions inert. -->
+      <section class="widget widget--dark">
+        <div class="widget__head">
+          <app-icon name="graduation" [size]="16" />
+          <h3>Mon Académie</h3>
+        </div>
+        <p class="widget__label">Progression globale</p>
+        <p class="widget__big">{{ academyProgress }}%</p>
+        <div class="widget__bar"><div class="widget__bar-fill" [style.width.%]="academyProgress"></div></div>
+        <span class="widget__link widget__link--inert">Voir mon parcours →</span>
+
+        <div class="widget__sub">
+          <div>
+            <p class="widget__sub-label">QCM disponibles</p>
+            <p class="widget__sub-value">{{ academyQuizCount }}</p>
+          </div>
+          <button type="button" class="widget__btn" disabled>Commencer</button>
+        </div>
+      </section>
+
+      <!-- Kaizen is a real feature (unlike Académie above) — this one
+           actually navigates, to the real /dashboard/kaizen route. -->
+      <section class="widget widget--soft">
+        <div class="widget__head">
+          <app-icon name="alert" [size]="16" />
+          <h3>Kaizen</h3>
+        </div>
+        <p class="widget__body">
+          <strong>{{ kaizenPendingCount }} suggestions en attente</strong><br>
+          Vos idées peuvent améliorer nos processus !
+        </p>
+        <a routerLink="/dashboard/kaizen" class="widget__btn widget__btn--link">Consulter</a>
+      </section>
+
+      <section class="widget">
+        <div class="widget__head">
+          <app-icon name="megaphone" [size]="16" />
+          <h3>Actualités</h3>
+          <span class="widget__link widget__link--inert" style="margin-left: auto;">Voir tout</span>
+        </div>
+
+        @for (item of news; track item.title) {
+          <div class="news-row">
+            <span class="news-row__icon"><app-icon [name]="item.icon" [size]="14" /></span>
+            <div class="news-row__body">
+              <p class="news-row__title">{{ item.title }}</p>
+              <p class="news-row__detail">{{ item.detail }}</p>
+              <p class="news-row__when">{{ item.when }}</p>
+            </div>
+          </div>
+        }
+      </section>
+    </aside>
+  </div>
+</div>

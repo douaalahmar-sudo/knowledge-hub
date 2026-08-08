@@ -22,7 +22,7 @@ export class LayoutShellComponent
     // Signed-in user + their tenant/role for the sidebar footer.
     user = this.auth.currentUser;
     role = this.auth.role;
-    tenantName = computed<string>(() => this.auth.currentTenant()?.name ?? 'FLESK Store #101 - Tunis');
+    tenantName = computed<string>(() => this.auth.currentTenant()?.name ?? 'AZIZA Store #101 - Tunis');
     userName = computed<string>(() => this.auth.currentUser()?.name ?? 'Utilisateur');
     roleLabel = computed<string>(() => {
         const r = this.auth.role() as DemoRole | null;

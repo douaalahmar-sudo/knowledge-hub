@@ -5,13 +5,17 @@
 
   <!-- ==================== LEFT BLOCK (SIDEBAR) ==================== -->
   <aside class="left-block" [class.open]="isMobileMenuOpen()">
+    <!-- The real Aziza mark — pulled from https://aziza.tn/favicon.ico (the
+         gold bag), the one verified brand asset found on the live site; see
+         frontend/public/images/aziza-logo.png and index.html for the rest of
+         where this same file is reused. -->
     <div class="brand-header">
       <div class="brand-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>
+        <img src="images/aziza-logo.png" alt="Aziza" class="brand-logo__img" />
       </div>
       <div class="brand-title">
-        <h2>Knowledge Hub</h2>
-        <span class="badge">FLESK Group</span>
+        <h2 class="brand-title__name">AZIZA</h2>
+        <span class="badge">Knowledge Hub</span>
       </div>
     </div>
 
@@ -134,6 +138,16 @@
       <!-- Global search replaces the static workspace title in the top nav -->
       <app-global-search class="header-search"></app-global-search>
       <app-notification-center></app-notification-center>
+
+      <!-- Same userName/roleLabel/initials already driving the sidebar
+           footer below — read once here rather than duplicated. -->
+      <div class="header-user">
+        <div class="header-user__avatar">{{ initials() }}</div>
+        <div class="header-user__info">
+          <span class="header-user__name">{{ userName() }}</span>
+          <span class="header-user__role">{{ roleLabel() }}</span>
+        </div>
+      </div>
     </header>
 
     <!-- Routed child views render here (procedures, kaizen, knowledge-base...) -->

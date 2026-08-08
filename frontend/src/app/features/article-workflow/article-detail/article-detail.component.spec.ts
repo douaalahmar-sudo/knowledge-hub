@@ -35,7 +35,7 @@ const articleFixture = (overrides: Partial<Article> = {}): Article =>
     published_at: '2026-08-01T10:00:00Z',
     created_at: '2026-08-01T10:00:00Z',
     updated_at: '2026-08-01T10:00:00Z',
-    author: { id: 1, name: 'Auteur', email: 'auteur@flesk.com' },
+    author: { id: 1, name: 'Auteur', email: 'auteur@aziza.com' },
     ...overrides,
   }) as Article;
 
@@ -100,7 +100,7 @@ describe('ArticleWorkflowDetailComponent', () => {
   });
 
   it('should create', () => {
-    setUp({ name: 'Test', email: 't@flesk.com', role: 'admin' });
+    setUp({ name: 'Test', email: 't@aziza.com', role: 'admin' });
     httpMock.expectOne(ME_URL).flush({ client_ip: '10.0.0.1' });
     expect(component).toBeTruthy();
   });
@@ -113,7 +113,7 @@ describe('ArticleWorkflowDetailComponent', () => {
   it('renders name, matricule, IP and a to-the-second timestamp in the watermark', () => {
     setUp({
       name: 'Douaa Lahmar',
-      email: 'douaa@flesk.com',
+      email: 'douaa@aziza.com',
       matricule: 'FLK-2291',
       role: 'admin',
     });
@@ -138,7 +138,7 @@ describe('ArticleWorkflowDetailComponent', () => {
 
   /** The IP arrives after first paint; the overlay must pick it up reactively. */
   it('substitutes the IP into an already-rendered watermark', () => {
-    setUp({ name: 'Douaa Lahmar', email: 'douaa@flesk.com', matricule: 'FLK-2291', role: 'admin' });
+    setUp({ name: 'Douaa Lahmar', email: 'douaa@aziza.com', matricule: 'FLK-2291', role: 'admin' });
 
     const meRequest = httpMock.expectOne(ME_URL);
     renderViewer();
@@ -155,7 +155,7 @@ describe('ArticleWorkflowDetailComponent', () => {
    * document from rendering.
    */
   it('degrades to a placeholder when the IP cannot be resolved', () => {
-    setUp({ name: 'Douaa Lahmar', email: 'douaa@flesk.com', matricule: 'FLK-2291', role: 'admin' });
+    setUp({ name: 'Douaa Lahmar', email: 'douaa@aziza.com', matricule: 'FLK-2291', role: 'admin' });
 
     httpMock.expectOne(ME_URL).flush('nope', { status: 500, statusText: 'Server Error' });
     renderViewer();
@@ -168,7 +168,7 @@ describe('ArticleWorkflowDetailComponent', () => {
 
   /** A response with no `client_ip` key at all must degrade the same way. */
   it('degrades when the API omits client_ip entirely', () => {
-    setUp({ name: 'Douaa Lahmar', email: 'douaa@flesk.com', matricule: 'FLK-2291', role: 'admin' });
+    setUp({ name: 'Douaa Lahmar', email: 'douaa@aziza.com', matricule: 'FLK-2291', role: 'admin' });
 
     httpMock.expectOne(ME_URL).flush({ user: { id: 1 } });
     renderViewer();
@@ -235,7 +235,7 @@ describe('ArticleWorkflowDetailComponent', () => {
       setUp({
         id: userId,
         name: 'Testeur',
-        email: 't@flesk.com',
+        email: 't@aziza.com',
         role: 'admin',
         access_role: accessRole,
       });

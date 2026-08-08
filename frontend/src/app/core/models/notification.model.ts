@@ -13,8 +13,12 @@ export interface AppNotification {
   created_at: string;
 }
 
+// 'violet' rather than 'indigo' on hr_request: tailwind.config.js remaps
+// `indigo` to the app's orange brand accent, so this stays visually distinct
+// from that shared colour instead of blending into every button on the page.
+// Matches the same swap in search-result.model.ts's PROCEDURE entry.
 export const NOTIFICATION_TYPE_META: Record<NotificationType, { icon: string; iconClass: string }> = {
   kaizen: { icon: 'alert', iconClass: 'bg-amber-50 text-amber-600' },
-  hr_request: { icon: 'inbox', iconClass: 'bg-indigo-50 text-indigo-600' },
+  hr_request: { icon: 'inbox', iconClass: 'bg-violet-50 text-violet-600' },
   system: { icon: 'check-circle', iconClass: 'bg-emerald-50 text-emerald-600' },
 };

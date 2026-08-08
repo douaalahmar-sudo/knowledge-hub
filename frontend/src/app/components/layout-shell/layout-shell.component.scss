@@ -15,16 +15,35 @@
   --border: #e5e7eb;
   --border-strong: #d8dbe0;
 
-  /* Text */
-  --text-primary: #101216;
+  /* Text — deep navy in place of the previous near-black/slate-900 ink
+     (#101216 here, #0f172a/#1e293b elsewhere). Same swap applied by hand to
+     every component .scss/.html file still hardcoding one of those, since
+     they don't read this token either (see the accent note below). Pure
+     functional black is intentionally NOT part of this sweep: video-player
+     letterboxing (.ad-frame__video etc.) and print-sheet.component.scss (the
+     §11.1 physical print output) both keep literal #000. */
+  --text-primary: #172033;
   --text-secondary: #52565f;
   --text-muted: #8a8f99;
 
-  /* Accent */
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --accent-soft: #eef0fe;
-  --accent-soft-text: #4338ca;
+  /* Accent — Aziza orange, pinned to the exact value from the brand review
+     (#D9541E), not the #E8692A/#D45A1F pair used in an earlier pass. Everything
+     downstream that reads var(--accent) / var(--accent-soft) etc. repaints from
+     this one place. Several component .scss files (article-workflow,
+     procedures, legacy articles) still carry their own hardcoded gradient/
+     shadow hex rather than these tokens — those were swept to the matching
+     shade by hand, not via var(), so they can drift out of sync with this
+     file if either is edited again later. */
+  --accent: #D9541E;
+  --accent-hover: #B8471A;
+  --accent-soft: #FBE9E0;
+  --accent-soft-text: #B8471A;
+  /* Golden-yellow secondary from the mockup (logo bag, warm highlights).
+     Not currently wired into any rule below — the brand-logo box that used to
+     read it was replaced by the real aziza-logo.png, which carries its own
+     colour. Left defined so it exists as a token rather than a one-off hex
+     the next component reaches for. */
+  --accent-secondary: #F5A623;
 
   /* Status */
   --success: #16a34a;
@@ -118,10 +137,10 @@
   --sidebar-bg-raised: #f1f5f9;
   --sidebar-bg-hover: #f1f5f9;
   --sidebar-border: #e2e8f0;
-  --sidebar-text: #0f172a;
+  --sidebar-text: #172033;
   --sidebar-text-muted: #64748b;
-  --sidebar-accent: #2563eb;
-  --sidebar-accent-soft: #eff6ff;
+  --sidebar-accent: #D9541E;
+  --sidebar-accent-soft: #FBE9E0;
 
   width: 264px;
   min-width: 264px;
@@ -163,40 +182,51 @@
 .brand-header {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  margin-bottom: 1.6rem;
+  gap: 0.65rem;
+  margin-bottom: 1.7rem;
   padding: 0.25rem 0.35rem;
 }
 
 .brand-logo {
-  width: 34px;
-  height: 34px;
-  background: linear-gradient(150deg, var(--accent), #7c3aed);
-  border-radius: var(--radius-sm);
+  // No background tile: aziza-logo.png is a real transparent PNG (verified —
+  // the gold bag shape carries its own colour with a transparent surround),
+  // unlike the inline SVG placeholder this replaced, which needed a coloured
+  // box behind it to read as a mark at all.
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.22);
 
-  svg { width: 18px; height: 18px; color: #fff; }
+  &__img { width: 100%; height: 100%; object-fit: contain; }
 }
 
 .brand-title {
-  h2 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+
+  &__name {
     font-family: var(--font-display);
-    font-size: 0.98rem;
+    font-size: 1.24rem;
+    line-height: 1;
     margin: 0;
-    color: var(--sidebar-text);
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    color: var(--accent);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }
 }
 
 .badge {
-  font-size: 0.68rem;
-  color: var(--sidebar-text-muted);
-  font-weight: 500;
+  display: block;
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--sidebar-text);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .tenant-selector {
@@ -206,11 +236,11 @@
   label {
     display: block;
     font-size: 0.68rem;
-    color: var(--sidebar-text-muted);
+    color: var(--sidebar-text);
+    font-weight: 700;
     margin-bottom: 0.4rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    font-weight: 600;
   }
 
   .select-shell select {
@@ -313,24 +343,25 @@
 
   &.active {
     background-color: var(--sidebar-accent-soft);
-    color: var(--sidebar-text);
+    color: var(--sidebar-accent);
     font-weight: 650;
 
     .nav-icon { color: var(--sidebar-accent); }
     .nav-active-bar { height: 16px; }
-    .nav-badge { background: #ffffff; color: var(--sidebar-accent); border-color: #dbe6fd; }
+    .nav-badge { background: #ffffff; color: var(--sidebar-accent); border-color: #EFC3AC; }
     .nav-badge.nav-badge-alert { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
   }
 }
 
-.nav-menu a.nav-item.active,
+/* `.active` is deliberately absent from this selector: it used to be listed
+   here too, with the same declarations as `:hover` below — same specificity
+   as the fuller `&.active` block above, later in the file, so it silently won
+   and repainted every active item as plain grey hover instead of the orange
+   accent-soft state that block defines. Left as `:hover`-only now that that's
+   fixed, so a genuinely new hover-only style still has somewhere to live. */
 .nav-menu a.nav-item:hover {
   background-color: var(--sidebar-bg-hover);
   color: var(--sidebar-text);
-}
-
-.nav-menu a.nav-item.active .nav-active-bar {
-  height: 16px;
 }
 
 .nav-menu .badge-danger {
@@ -445,6 +476,56 @@
   position: sticky;
   top: 0;
   z-index: 5;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  padding-left: 0.6rem;
+  margin-left: 0.2rem;
+  border-left: 1px solid var(--border);
+
+  &__avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: none;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+
+  &__name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  &__role {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: capitalize;
+  }
+
+  // Name/role text hidden below ~700px of header space, same breakpoint the
+  // mobile sidebar drawer already uses — the avatar alone still identifies
+  // the session without crowding the search bar on a narrow header.
+  @media (min-width: 640px) {
+    &__info { display: flex; }
+  }
 }
 
 .header-title {
@@ -1107,7 +1188,7 @@
 
 .primary-card {
   background: var(--accent-soft);
-  border: 1px solid #dcdcfb;
+  border: 1px solid #EFC3AC;
 
   .ref { color: var(--accent-soft-text); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.02em; }
   h4 { font-family: var(--font-display); margin: 0.45rem 0 0.7rem 0; color: var(--text-primary); font-size: 1rem; font-weight: 700; }
@@ -1118,7 +1199,7 @@
   flex-direction: column;
   gap: 0.45rem;
   padding-top: 0.6rem;
-  border-top: 1px solid rgba(79, 70, 229, 0.14);
+  border-top: 1px solid rgba(217, 84, 30, 0.18);
 }
 
 .kv-row {
@@ -1332,7 +1413,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(11, 13, 18, 0.5);
+  background: rgba(23, 32, 51, 0.5);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -1565,7 +1646,7 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(11, 13, 18, 0.45);
+    background: rgba(23, 32, 51, 0.45);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;

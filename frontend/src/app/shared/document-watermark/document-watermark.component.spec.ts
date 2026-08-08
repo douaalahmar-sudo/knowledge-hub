@@ -84,7 +84,7 @@ describe('DocumentWatermarkComponent', () => {
   });
 
   it('renders the four §10.3 fields in order', () => {
-    setUp({ name: 'Douaa Lahmar', email: 'douaa@flesk.com', matricule: 'FLK-2291', role: 'admin' });
+    setUp({ name: 'Douaa Lahmar', email: 'douaa@aziza.com', matricule: 'FLK-2291', role: 'admin' });
     httpMock.expectOne(ME_URL).flush({ client_ip: '196.203.44.12' });
     fixture.detectChanges();
 
@@ -109,11 +109,11 @@ describe('DocumentWatermarkComponent', () => {
   });
 
   it('falls back to the email when there is no matricule', () => {
-    setUp({ name: 'Douaa Lahmar', email: 'douaa@flesk.com', role: 'admin' });
+    setUp({ name: 'Douaa Lahmar', email: 'douaa@aziza.com', role: 'admin' });
     httpMock.expectOne(ME_URL).flush({ client_ip: '10.0.0.1' });
     fixture.detectChanges();
 
-    expect(text()).toContain('Douaa Lahmar | douaa@flesk.com | 10.0.0.1 |');
+    expect(text()).toContain('Douaa Lahmar | douaa@aziza.com | 10.0.0.1 |');
   });
 
   it('degrades to a placeholder when the IP lookup fails, never "undefined"', () => {

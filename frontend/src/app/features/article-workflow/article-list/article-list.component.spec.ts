@@ -30,7 +30,7 @@ function makeArticle(overrides: Partial<Article>): Article {
     published_at: null,
     created_at: '2026-07-01T00:00:00Z',
     updated_at: '2026-07-01T00:00:00Z',
-    author: { id: 1, name: 'Auteur', email: 'auteur@flesk.com' },
+    author: { id: 1, name: 'Auteur', email: 'auteur@aziza.com' },
     ...overrides,
   };
 }
@@ -51,7 +51,7 @@ describe('ArticleWorkflowListComponent', () => {
       JSON.stringify({
         id: 1,
         name: 'Testeur',
-        email: 'testeur@flesk.com',
+        email: 'testeur@aziza.com',
         role: 'expert_metier',
         ...(accessRole ? { access_role: accessRole } : {}),
       })

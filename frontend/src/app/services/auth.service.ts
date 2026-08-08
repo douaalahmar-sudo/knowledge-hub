@@ -42,7 +42,7 @@ export type AccessRole =
 // Real credential checking now happens server-side (POST /v1/auth/login).
 // This tenant object is only still needed as the placeholder tenant register()
 // assigns to a brand-new local-only signup session.
-const STORE_TENANT = { name: 'FLESK Store #101 - Tunis', plan: 'premium' };
+const STORE_TENANT = { name: 'AZIZA Store #101 - Tunis', plan: 'premium' };
 
 /** Display labels for the sidebar/user-footer (role keys stay snake_case internally). */
 export const ROLE_LABELS: Record<DemoRole, string> = {
@@ -256,7 +256,7 @@ export class AuthService {
     const account = {
       id: Date.now(),
       name: userData?.name || 'Nouvel employé',
-      email: (userData?.email || 'demo@flesk.com').toLowerCase(),
+      email: (userData?.email || 'demo@aziza.com').toLowerCase(),
       role: 'hr_user' as DemoRole,
       tenant: STORE_TENANT,
     };

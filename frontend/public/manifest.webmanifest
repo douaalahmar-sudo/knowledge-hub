@@ -1,0 +1,12 @@
+{
+  "name": "Aziza Knowledge Hub",
+  "short_name": "Aziza Hub",
+  "theme_color": "#E8692A",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    { "src": "images/aziza-logo.png", "sizes": "250x250", "type": "image/png" }
+  ]
+}

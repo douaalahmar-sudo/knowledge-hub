@@ -27,11 +27,15 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () => import('./components/layout-shell/layout-shell.component').then(m => m.LayoutShellComponent),
         children: [
-            // /dashboard -> Executive dashboard & procedures
+            // /dashboard -> Tableau de bord. Used to load ProceduresListComponent
+            // here directly, which made "Tableau de bord" and "Gestion des
+            // Procédures" the same screen — DashboardComponent is a placeholder
+            // until real KPI data is wired in. Procedures itself is unaffected;
+            // it still exists at its own path right below.
             {
                 path: '',
                 pathMatch: 'full',
-                loadComponent: () => import('./pages/procedures-list/procedures-list.component').then(m => m.ProceduresListComponent)
+                loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent)
             },
             // /dashboard/procedures -> Procedures list (alias used by "related procedures" links)
             {

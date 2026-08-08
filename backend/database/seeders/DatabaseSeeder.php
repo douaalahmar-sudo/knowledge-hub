@@ -48,8 +48,8 @@ class DatabaseSeeder extends Seeder
         }
 
         // 2. Filiales
-        $hqFiliale = Filiale::firstOrCreate(['name' => 'FLESK HQ & Services Centraux']);
-        $store101 = Filiale::firstOrCreate(['name' => 'FLESK Store #101 - Tunis']);
+        $hqFiliale = Filiale::firstOrCreate(['name' => 'Aziza HQ & Services Centraux']);
+        $store101 = Filiale::firstOrCreate(['name' => 'Aziza Store #101 - Tunis']);
 
         // 3. One demo login per role (password: password123).
         // All roles are seeded in Store #101 EXCEPT `responsable_departement`, which

@@ -1,17 +1,19 @@
 <div style="display: flex; flex-direction: column; gap: 24px;">
   <!-- Header Metric Cards -->
   <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-    <article style="background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%); color: white; border-radius: 20px; padding: 20px; box-shadow: 0 20px 45px -30px rgba(15, 23, 42, 0.35);">
-      <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8;">Tenant actif</div>
-      <div style="margin-top: 10px; font-size: 22px; font-weight: 800; line-height: 1.2;">{{ tenant()?.name || 'Tenant Inconnu' }}</div>
+    <!-- Solid deep-navy pair, no orange in the gradient — matches the tenant
+         card in procedures-list.component.html. -->
+    <article style="background: linear-gradient(135deg, #1B2A4A 0%, #2D4373 100%); color: white; border-radius: 12px; padding: 24px; box-shadow: 0 20px 45px -30px rgba(23, 32, 51, 0.35);">
+      <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: #F5A623; margin-bottom: 12px;">Tenant actif</div>
+      <div style="font-size: 20px; font-weight: 700; color: white;">{{ tenant()?.name || 'Tenant Inconnu' }}</div>
     </article>
 
-    <article style="background: rgba(255,255,255,0.85); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 20px; padding: 20px; box-shadow: 0 20px 45px -30px rgba(15, 23, 42, 0.35);">
+    <article style="background: rgba(255,255,255,0.85); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 20px; padding: 20px; box-shadow: 0 20px 45px -30px rgba(23, 32, 51, 0.35);">
       <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">Signalements ouverts</div>
-      <div style="margin-top: 10px; font-size: 34px; font-weight: 800; color: #0f172a;">{{ pendingCount() }}</div>
+      <div style="margin-top: 10px; font-size: 34px; font-weight: 800; color: #172033;">{{ pendingCount() }}</div>
     </article>
 
-    <article style="background: rgba(255,255,255,0.85); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 20px; padding: 20px; box-shadow: 0 20px 45px -30px rgba(15, 23, 42, 0.35);">
+    <article style="background: rgba(255,255,255,0.85); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 20px; padding: 20px; box-shadow: 0 20px 45px -30px rgba(23, 32, 51, 0.35);">
       <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">Total traités (v+1 publiés)</div>
       <div style="margin-top: 10px; font-size: 34px; font-weight: 800; color: #15803d;">{{ closedCount() }}</div>
     </article>
@@ -27,7 +29,7 @@
   <section class="kr-split" style="gap: 24px; align-items: start;">
 
     <!-- LEFT: Signalements List -->
-    <div style="background: white; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 20px 45px -35px rgba(15, 23, 42, 0.35); overflow: hidden;">
+    <div style="background: white; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 20px 45px -35px rgba(23, 32, 51, 0.35); overflow: hidden;">
       <div style="padding: 18px 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
         <h2 style="margin: 0; font-size: 16px; font-weight: 800;">Signalements Kaizen</h2>
         <p style="margin: 4px 0 0; font-size: 13px; color: #64748b;">Suivi tenant-isolé des écarts terrain & SLA dynamic workflow.</p>
@@ -36,7 +38,7 @@
       <div style="padding: 8px 0;">
         @if (isLoading()) {
           <div style="padding: 32px 20px; text-align: center; color: #64748b;">
-            <div style="display: inline-block; width: 28px; height: 28px; border: 3px solid #c7d2fe; border-top-color: #4f46e5; border-radius: 9999px; animation: kh-spin 0.7s linear infinite;"></div>
+            <div style="display: inline-block; width: 28px; height: 28px; border: 3px solid #EFC3AC; border-top-color: #D9541E; border-radius: 9999px; animation: kh-spin 0.7s linear infinite;"></div>
             <div style="margin-top: 10px;">Chargement des signalements...</div>
           </div>
         } @else {
@@ -46,7 +48,7 @@
             @for (report of reports(); track report.id) {
               <article style="padding: 16px 20px; border-top: 1px solid #e2e8f0; display: grid; gap: 10px;">
                 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: center;">
-                  <div style="font-weight: 800; color: #0f172a;">
+                  <div style="font-weight: 800; color: #172033;">
                     {{ report.procedure?.title }} 
                     <span style="font-size: 12px; color: #64748b; font-weight: 500;">({{ report.procedure?.version }})</span>
                   </div>
@@ -62,14 +64,14 @@
                   </div>
                 </div>
 
-                <div style="font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.05em;">
+                <div style="font-size: 12px; font-weight: 700; color: #B8471A; text-transform: uppercase; letter-spacing: 0.05em;">
                   TYPE: {{ report.type }}
                 </div>
 
                 <div style="color: #475569; line-height: 1.6; font-size: 14px;">{{ report.description }}</div>
 
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px dashed #f1f5f9; padding-top: 8px; margin-top: 4px;">                  <div style="font-size: 12px; color: #94a3b8;">
-                    Statut: <b style="color: #0f172a; text-transform: capitalize;">{{ report.status }}</b> · Soumis par {{ report.submitter?.name }}
+                    Statut: <b style="color: #172033; text-transform: capitalize;">{{ report.status }}</b> · Soumis par {{ report.submitter?.name }}
                   </div>
 
                   <!-- State Machine Action Buttons -->
@@ -94,7 +96,7 @@
     </div>
 
     <!-- RIGHT: Submission Form -->
-    <form (ngSubmit)="submitReport()" style="background: white; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 20px 45px -35px rgba(15, 23, 42, 0.35); padding: 20px; display: grid; gap: 16px;">
+    <form (ngSubmit)="submitReport()" style="background: white; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 20px 45px -35px rgba(23, 32, 51, 0.35); padding: 20px; display: grid; gap: 16px;">
       <div>
         <h2 style="margin: 0 0 6px; font-size: 16px; font-weight: 800;">Déclarer un écart Kaizen</h2>
         <p style="margin: 0; font-size: 13px; color: #64748b;">Le signalement est auto-routé vers le Process Owner de la procédure.</p>
@@ -134,10 +136,10 @@
       <!-- Description -->
       <div>
         <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; color: #334155;">Description de l'écart</label>
-        <textarea [ngModel]="description()" (ngModelChange)="description.set($event)" name="description" rows="5" required placeholder="Décrire l'écart observé sur le terrain..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px 14px; color: #0f172a; box-sizing: border-box; resize: vertical;"></textarea>
+        <textarea [ngModel]="description()" (ngModelChange)="description.set($event)" name="description" rows="5" required placeholder="Décrire l'écart observé sur le terrain..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px 14px; color: #172033; box-sizing: border-box; resize: vertical;"></textarea>
       </div>
 
-      <button type="submit" [disabled]="isSubmitting()" style="border: none; background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%); color: white; padding: 12px 16px; border-radius: 14px; font-weight: 700; cursor: pointer;">
+      <button type="submit" [disabled]="isSubmitting()" style="border: none; background: linear-gradient(135deg, #B8471A 0%, #D9541E 100%); color: white; padding: 12px 16px; border-radius: 14px; font-weight: 700; cursor: pointer;">
         {{ isSubmitting() ? 'Envoi...' : 'Soumettre le Kaizen' }}
       </button>
     </form>
@@ -147,7 +149,7 @@
   @if (activeResolvingSignal()) {
     <div style="position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;">
       <div style="background: white; border-radius: 24px; max-width: 600px; width: 100%; padding: 24px; display: grid; gap: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
-        <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: #0f172a;">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: #172033;">
           Résoudre & Publier Nouvelle Version (v+1)
         </h2>
         <p style="margin: 0; font-size: 13px; color: #64748b;">

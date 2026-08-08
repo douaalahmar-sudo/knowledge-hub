@@ -36,9 +36,14 @@ export const SEARCH_TYPE_META: Record<SearchEntityType, {
   iconClass: string;   // color for the icon tile
   badgeClass: string;  // color for the small type badge
 }> = {
+  // 'violet' rather than 'indigo': tailwind.config.js remaps the `indigo`
+  // palette to the app's orange brand accent, which every button/link/focus
+  // ring in the app now shares. This legend needs four colours that read as
+  // distinct from *each other* and from that shared brand colour, so
+  // PROCEDURE uses the one Tailwind hue nothing else here is aliased to.
   PROCEDURE: {
     label: 'Procédure', labelPlural: 'Procédures', icon: 'policy',
-    iconClass: 'bg-indigo-50 text-indigo-600', badgeClass: 'bg-indigo-100 text-indigo-700'
+    iconClass: 'bg-violet-50 text-violet-600', badgeClass: 'bg-violet-100 text-violet-700'
   },
   ARTICLE: {
     label: 'Article', labelPlural: 'Articles', icon: 'book',

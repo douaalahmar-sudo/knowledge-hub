@@ -21,10 +21,10 @@ function seedSession(user: Record<string, unknown> | null, token: string | null)
 const legacySession = {
   id: 7,
   name: 'Douaa L.',
-  email: 'douaa@flesk.com',
+  email: 'douaa@aziza.com',
   matricule: 'M-0042',
   role: 'validator',
-  tenant: { name: 'FLESK Store #101 - Tunis' },
+  tenant: { name: 'AZIZA Store #101 - Tunis' },
 };
 
 describe('AuthService', () => {
@@ -82,7 +82,7 @@ describe('AuthService', () => {
       const user = service.currentUser();
       expect(user.matricule).toBe('M-0042');
       expect(user.role).toBe('validator');
-      expect(user.tenant.name).toBe('FLESK Store #101 - Tunis');
+      expect(user.tenant.name).toBe('AZIZA Store #101 - Tunis');
       http.verify();
     });
 
